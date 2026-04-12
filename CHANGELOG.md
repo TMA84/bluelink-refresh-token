@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.8.3
+
+### Fix
+- Image-Tags ohne `v` Prefix — HA Supervisor sucht nach `2.8.3`, nicht `v2.8.3`
+
 ## 2.8.2
 
 ### Fix

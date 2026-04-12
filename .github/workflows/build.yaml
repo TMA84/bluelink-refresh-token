@@ -100,7 +100,7 @@ jobs:
           container-registry-password: ${{ secrets.GITHUB_TOKEN }}
           image: ${{ matrix.image }}
           image-tags: |
-            v${{ needs.release.outputs.version }}
+            ${{ needs.release.outputs.version }}
             latest
           push: "true"
           version: ${{ needs.release.outputs.version }}
@@ -125,7 +125,7 @@ jobs:
           image-name: ${{ env.IMAGE_NAME }}
           registry-prefix: ${{ needs.release.outputs.registry_prefix }}
           image-tags: |
-            v${{ needs.release.outputs.version }}
+            ${{ needs.release.outputs.version }}
             latest
 
       - name: Update release with image references
@@ -142,14 +142,14 @@ jobs:
           ### Container Images
 
           \`\`\`
-          docker pull ${PREFIX}/bluelink-token:v${VERSION}
+          docker pull ${PREFIX}/bluelink-token:${VERSION}
           \`\`\`
 
           | Image | Tag |
           |-------|-----|
-          | \`${PREFIX}/bluelink-token\` | \`v${VERSION}\`, \`latest\` |
-          | \`${PREFIX}/amd64-bluelink-token\` | \`v${VERSION}\`, \`latest\` |
-          | \`${PREFIX}/aarch64-bluelink-token\` | \`v${VERSION}\`, \`latest\` |
+          | \`${PREFIX}/bluelink-token\` | \`${VERSION}\`, \`latest\` |
+          | \`${PREFIX}/amd64-bluelink-token\` | \`${VERSION}\`, \`latest\` |
+          | \`${PREFIX}/aarch64-bluelink-token\` | \`${VERSION}\`, \`latest\` |
           EOF
           )
           gh release edit "v${VERSION}" --notes "${EXISTING}${IMAGES}"
