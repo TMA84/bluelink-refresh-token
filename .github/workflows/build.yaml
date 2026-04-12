@@ -115,6 +115,8 @@ jobs:
       id-token: write
       packages: write
     steps:
+      - uses: actions/checkout@v4
+
       - name: Publish multi-arch manifest
         uses: home-assistant/builder/actions/publish-multi-arch-manifest@2026.03.2
         with:
