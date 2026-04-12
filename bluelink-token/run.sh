@@ -38,4 +38,4 @@ bashio::log.info "Web UI available at port 9876"
 
 # Activate virtual environment and run web server
 source /opt/venv/bin/activate
-exec python3 /app/web.py
+exec gunicorn --bind 0.0.0.0:9876 --workers 1 --threads 4 --timeout 300 web:app
