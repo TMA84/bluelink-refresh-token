@@ -15,7 +15,7 @@ app = Flask(__name__)
 
 state = {
     "status": "idle", "refresh_token": None, "access_token": None,
-    "error": None, "test_result": "", "log": [],
+    "error": None, "test_result": "", "log": [], "brand_override": None,
 }
 
 BRAND_CONFIG = {
@@ -152,6 +152,9 @@ def render(content):
 <script>{SCRIPT}</script></body></html>"""
 
 def get_brand():
+    override = state.get("brand_override")
+    if override and override in BRAND_CONFIG:
+        return override
     return os.environ.get("BRAND", "hyundai").lower()
 
 def log(msg, level="info"):
@@ -197,19 +200,20 @@ def get_token_thread(brand):
         password = os.environ.get("BLUELINK_PASSWORD", "")
         if username and password:
             log("Auto-filling credentials...")
-            time.sleep(3)
             try:
-                # Find and fill email/username field
-                email_field = driver.find_element(By.CSS_SELECTOR,
-                    "input[type='email'], input[type='text'][name*='mail'], "
+                email_selector = ("input[type='email'], input[type='text'][name*='mail'], "
                     "input[type='text'][name*='user'], input[name='username'], "
                     "input[id*='email'], input[id*='user'], input[type='text']")
+                # Wait for the email field to appear instead of a fixed sleep
+                email_field = WebDriverWait(driver, 15).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, email_selector)))
                 email_field.clear()
                 email_field.send_keys(username)
                 log("Username entered.", "ok")
 
-                # Find and fill password field
-                pw_field = driver.find_element(By.CSS_SELECTOR, "input[type='password']")
+                # Wait for password field to appear
+                pw_field = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "input[type='password']")))
                 pw_field.clear()
                 pw_field.send_keys(password)
                 log("Password entered.", "ok")
@@ -286,15 +290,28 @@ def index():
                       "You only need to click the Sign In button.") if has_creds else (
                       "No credentials configured. You will need to enter them manually in the browser. "
                       "Tip: Set username and password in the addon configuration for auto-fill.")
+        default_brand = os.environ.get("BRAND", "hyundai").lower()
+        kia_sel = "selected" if default_brand == "kia" else ""
+        hyu_sel = "selected" if default_brand != "kia" else ""
         return render(f"""
 <div class="card">
     <div class="card-title">Generate Refresh Token</div>
     <p style="margin-bottom: 12px; color: var(--text-secondary); font-size: 14px;">
         A Chromium browser will open in the background. You can interact with it
-        through the embedded viewer below to complete the {bt} Bluelink login.
+        through the embedded viewer below to complete the Bluelink login.
     </p>
     <div class="notice notice-info">{creds_note}</div>
     <form method="POST" action="/start">
+        <div style="margin-bottom: 16px;">
+            <label for="brand-select" class="section-label">Brand</label>
+            <select id="brand-select" name="brand" style="
+                padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px;
+                font-size: 14px; font-family: inherit; background: var(--surface);
+                cursor: pointer; min-width: 200px; transition: border-color 0.2s;">
+                <option value="hyundai" {hyu_sel}>Hyundai</option>
+                <option value="kia" {kia_sel}>Kia</option>
+            </select>
+        </div>
         <button type="submit" class="btn btn-primary">Start token generation</button>
     </form>
 </div>""")
@@ -402,6 +419,11 @@ def index():
 
 @app.route("/start", methods=["POST"])
 def start():
+    chosen_brand = request.form.get("brand", "").lower()
+    if chosen_brand in BRAND_CONFIG:
+        state["brand_override"] = chosen_brand
+    else:
+        state["brand_override"] = None
     state.update({"status": "waiting_login", "refresh_token": None,
                   "access_token": None, "error": None, "test_result": "", "log": []})
     threading.Thread(target=get_token_thread, args=(get_brand(),), daemon=True).start()
@@ -414,7 +436,7 @@ def start():
 @app.route("/reset", methods=["POST"])
 def reset():
     state.update({"status": "idle", "refresh_token": None, "access_token": None,
-                  "error": None, "test_result": "", "log": []})
+                  "error": None, "test_result": "", "log": [], "brand_override": None})
     return flask_redirect("/")
 
 @app.route("/novnc")
@@ -458,7 +480,7 @@ def api_type():
     if not text:
         return jsonify({"ok": False, "error": "No text"})
     try:
-        subprocess.run(["xdotool", "type", "--clearmodifiers", "--delay", "50", text],
+        subprocess.run(["xdotool", "type", "--clearmodifiers", "--delay", "12", text],
                        env={**os.environ, "DISPLAY": ":99"}, timeout=10)
         return jsonify({"ok": True})
     except Exception as e:
