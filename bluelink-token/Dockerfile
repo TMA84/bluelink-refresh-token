@@ -1,7 +1,14 @@
-ARG BUILD_FROM
-FROM $BUILD_FROM
+FROM ghcr.io/home-assistant/base:latest
 
-ARG CACHEBUST=1
+LABEL \
+    org.opencontainers.image.title="Bluelink Token Generator" \
+    org.opencontainers.image.description="Generate Hyundai/Kia Bluelink refresh tokens for evcc and Home Assistant" \
+    org.opencontainers.image.source="https://github.com/TMA84/bluelink-refresh-token" \
+    org.opencontainers.image.licenses="MIT" \
+    io.hass.name="Bluelink Token Generator" \
+    io.hass.description="Generate Hyundai/Kia Bluelink refresh tokens" \
+    io.hass.type="addon" \
+    io.hass.url="https://github.com/TMA84/bluelink-refresh-token"
 
 # Install dependencies
 RUN apk add --no-cache \

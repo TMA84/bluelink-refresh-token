@@ -1,45 +1,74 @@
 name: Build and Publish
 
 on:
-  push:
-    branches: [main]
-    tags: ["v*"]
+  release:
+    types: [published]
   workflow_dispatch:
 
 env:
-  BUILD_ARGS: "--test"
+  ARCHITECTURES: '["amd64", "aarch64"]'
+  IMAGE_NAME: bluelink-token
+
+permissions:
+  contents: read
 
 jobs:
-  build:
-    name: Build ${{ matrix.arch }}
+  init:
+    name: Initialize build
     runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get build matrix
+        id: matrix
+        uses: home-assistant/builder/actions/prepare-multi-arch-matrix@2026.02.1
+        with:
+          architectures: ${{ env.ARCHITECTURES }}
+          image-name: ${{ env.IMAGE_NAME }}
+
+  build:
+    name: Build ${{ matrix.arch }} image
+    needs: init
+    runs-on: ${{ matrix.os }}
     permissions:
       contents: read
+      id-token: write
       packages: write
     strategy:
       fail-fast: false
-      matrix:
-        arch:
-          - aarch64
-          - amd64
-          - armhf
-          - armv7
-          - i386
+      matrix: ${{ fromJSON(needs.init.outputs.matrix) }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+      - name: Build image
+        uses: home-assistant/builder/actions/build-image@2026.02.1
         with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          arch: ${{ matrix.arch }}
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          image: ${{ matrix.image }}
+          image-tags: |
+            ${{ github.event.release.tag_name || 'latest' }}
+            latest
+          push: "true"
+          version: ${{ github.event.release.tag_name || 'dev' }}
+          context: bluelink-token
 
-      - name: Build and push
-        uses: home-assistant/builder@master
+  manifest:
+    name: Publish multi-arch manifest
+    needs: [init, build]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      packages: write
+    steps:
+      - name: Publish multi-arch manifest
+        uses: home-assistant/builder/actions/publish-multi-arch-manifest@2026.02.1
         with:
-          args: |
-            --${{ matrix.arch }}
-            --target bluelink-token
-            --docker-hub ghcr.io/${{ github.repository_owner }}
+          architectures: ${{ env.ARCHITECTURES }}
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          image-name: ${{ env.IMAGE_NAME }}
+          image-tags: |
+            ${{ github.event.release.tag_name || 'latest' }}
+            latest
