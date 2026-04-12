@@ -8,6 +8,7 @@ on:
 env:
   ARCHITECTURES: '["amd64", "aarch64"]'
   IMAGE_NAME: bluelink-token
+  REGISTRY_PREFIX: ghcr.io/${{ github.repository_owner }}
 
 permissions:
   contents: write
@@ -19,8 +20,14 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       created: ${{ steps.check.outputs.created }}
+      registry_prefix: ${{ steps.lower.outputs.registry_prefix }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Lowercase registry prefix
+        id: lower
+        run: |
+          echo "registry_prefix=$(echo '${{ env.REGISTRY_PREFIX }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
       - name: Extract version from config.yaml
         id: version
@@ -46,7 +53,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          # Extract release notes for this version from CHANGELOG.md
           NOTES=$(awk "/^## ${VERSION}\$/,/^## [0-9]/" CHANGELOG.md | sed '1d;/^## [0-9]/d' | sed -e :a -e '/^\n*$/{$d;N;ba}')
           if [ -z "$NOTES" ]; then
             NOTES="Release v${VERSION}"
@@ -71,6 +77,7 @@ jobs:
         with:
           architectures: ${{ env.ARCHITECTURES }}
           image-name: ${{ env.IMAGE_NAME }}
+          registry-prefix: ${{ needs.release.outputs.registry_prefix }}
 
   build:
     name: Build ${{ matrix.arch }} image
@@ -114,6 +121,7 @@ jobs:
           architectures: ${{ env.ARCHITECTURES }}
           container-registry-password: ${{ secrets.GITHUB_TOKEN }}
           image-name: ${{ env.IMAGE_NAME }}
+          registry-prefix: ${{ needs.release.outputs.registry_prefix }}
           image-tags: |
             v${{ needs.release.outputs.version }}
             latest
@@ -123,7 +131,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="${{ needs.release.outputs.version }}"
-          OWNER="${{ github.repository_owner }}"
+          PREFIX="${{ needs.release.outputs.registry_prefix }}"
           EXISTING=$(gh release view "v${VERSION}" --json body -q .body)
           IMAGES=$(cat <<EOF
 
@@ -132,14 +140,14 @@ jobs:
           ### Container Images
 
           \`\`\`
-          docker pull ghcr.io/${OWNER}/bluelink-token:v${VERSION}
+          docker pull ${PREFIX}/bluelink-token:v${VERSION}
           \`\`\`
 
           | Image | Tag |
           |-------|-----|
-          | [\`ghcr.io/${OWNER}/bluelink-token\`](https://ghcr.io/${OWNER}/bluelink-token) | \`v${VERSION}\`, \`latest\` |
-          | [\`ghcr.io/${OWNER}/amd64-bluelink-token\`](https://ghcr.io/${OWNER}/amd64-bluelink-token) | \`v${VERSION}\`, \`latest\` |
-          | [\`ghcr.io/${OWNER}/aarch64-bluelink-token\`](https://ghcr.io/${OWNER}/aarch64-bluelink-token) | \`v${VERSION}\`, \`latest\` |
+          | \`${PREFIX}/bluelink-token\` | \`v${VERSION}\`, \`latest\` |
+          | \`${PREFIX}/amd64-bluelink-token\` | \`v${VERSION}\`, \`latest\` |
+          | \`${PREFIX}/aarch64-bluelink-token\` | \`v${VERSION}\`, \`latest\` |
           EOF
           )
           gh release edit "v${VERSION}" --notes "${EXISTING}${IMAGES}"

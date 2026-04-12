@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.8.1
+
+### Fix
+- **Lowercase Registry Prefix** — `github.repository_owner` wird jetzt zu lowercase konvertiert, da Docker keine Großbuchstaben in Image-Namen erlaubt
+
 ## 2.8.0
 
 ### Neu
