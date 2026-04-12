@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.8.2
+
+### Fix
+- Checkout Step im Manifest-Job für `gh release edit`
+- README im Home Assistant Addon-Stil mit Badges und One-Click Install
+- MIT LICENSE Datei hinzugefügt
+
 ## 2.8.1
 
 ### Fix
