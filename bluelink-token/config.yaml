@@ -1,7 +1,8 @@
 name: "Bluelink Token Generator"
 description: "Generate Hyundai/Kia Bluelink refresh tokens for evcc and Home Assistant"
-version: "2.5.1"
+version: "2.6.0"
 slug: "bluelink_token"
+image: "ghcr.io/tma84/bluelink-token-{arch}"
 arch:
   - aarch64
   - amd64

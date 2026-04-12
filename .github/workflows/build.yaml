@@ -1,0 +1,45 @@
+name: Build and Publish
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+env:
+  BUILD_ARGS: "--test"
+
+jobs:
+  build:
+    name: Build ${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - aarch64
+          - amd64
+          - armhf
+          - armv7
+          - i386
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: home-assistant/builder@master
+        with:
+          args: |
+            --${{ matrix.arch }}
+            --target bluelink-token
+            --docker-hub ghcr.io/${{ github.repository_owner }}
