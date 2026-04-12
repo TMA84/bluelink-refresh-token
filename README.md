@@ -44,6 +44,38 @@ The generated refresh token is valid for **180 days**. Use it as the password to
 - [evcc](https://docs.evcc.io/docs/devices/vehicles#hyundai--kia) vehicle integration
 - [Home Assistant Kia/Hyundai integration](https://github.com/Hyundai-Kia-Connect/kia_uvo)
 
+## Standalone mit Docker (ohne Home Assistant)
+
+Falls du kein Home Assistant nutzt, kannst du den Container auch direkt mit Docker starten:
+
+```bash
+docker run -d \
+  --name bluelink-token \
+  -p 9876:9876 \
+  -p 6080:6080 \
+  -e BRAND=hyundai \
+  -e BLUELINK_USERNAME=deine@email.de \
+  -e BLUELINK_PASSWORD=deinpasswort \
+  ghcr.io/tma84/bluelink-token-amd64:latest
+```
+
+Für ARM-Geräte (z.B. Raspberry Pi) stattdessen `bluelink-token-aarch64` verwenden:
+
+```bash
+docker run -d \
+  --name bluelink-token \
+  -p 9876:9876 \
+  -p 6080:6080 \
+  -e BRAND=kia \
+  -e BLUELINK_USERNAME=deine@email.de \
+  -e BLUELINK_PASSWORD=deinpasswort \
+  ghcr.io/tma84/bluelink-token-aarch64:latest
+```
+
+Danach erreichbar unter `http://localhost:9876`. Username und Passwort sind optional — ohne werden die Felder nicht automatisch ausgefüllt.
+
+Verfügbare Architekturen: `amd64`, `aarch64`, `armv7`, `armhf`, `i386`.
+
 ## Credits
 
 Based on [bluelink_refresh_token](https://github.com/RustyDust/bluelink_refresh_token) by RustyDust.
