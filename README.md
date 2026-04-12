@@ -56,25 +56,12 @@ docker run -d \
   -e BRAND=hyundai \
   -e BLUELINK_USERNAME=deine@email.de \
   -e BLUELINK_PASSWORD=deinpasswort \
-  ghcr.io/tma84/bluelink-token-amd64:latest
-```
-
-Für ARM-Geräte (z.B. Raspberry Pi) stattdessen `bluelink-token-aarch64` verwenden:
-
-```bash
-docker run -d \
-  --name bluelink-token \
-  -p 9876:9876 \
-  -p 6080:6080 \
-  -e BRAND=kia \
-  -e BLUELINK_USERNAME=deine@email.de \
-  -e BLUELINK_PASSWORD=deinpasswort \
-  ghcr.io/tma84/bluelink-token-aarch64:latest
+  ghcr.io/tma84/bluelink-token:latest
 ```
 
 Danach erreichbar unter `http://localhost:9876`. Username und Passwort sind optional — ohne werden die Felder nicht automatisch ausgefüllt.
 
-Verfügbare Architekturen: `amd64`, `aarch64`, `armv7`, `armhf`, `i386`.
+Das Image ist ein Multi-Arch Manifest und funktioniert automatisch auf `amd64` und `aarch64` (z.B. Raspberry Pi).
 
 ## Credits
 
