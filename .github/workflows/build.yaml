@@ -1,8 +1,8 @@
 name: Build and Publish
 
 on:
-  release:
-    types: [published]
+  push:
+    branches: [main]
   workflow_dispatch:
 
 env:
@@ -10,11 +10,49 @@ env:
   IMAGE_NAME: bluelink-token
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
+  release:
+    name: Create release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      created: ${{ steps.check.outputs.created }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from config.yaml
+        id: version
+        run: |
+          VERSION=$(grep '^version:' bluelink-token/config.yaml | sed 's/version: *"\(.*\)"/\1/')
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Check if release exists
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "v${{ steps.version.outputs.version }}" > /dev/null 2>&1; then
+            echo "Release v${{ steps.version.outputs.version }} already exists, skipping."
+            echo "created=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "created=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub release
+        if: steps.check.outputs.created == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ steps.version.outputs.version }}" \
+            --title "v${{ steps.version.outputs.version }}" \
+            --generate-notes
+
   init:
     name: Initialize build
+    needs: release
+    if: needs.release.outputs.created == 'true'
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
@@ -30,7 +68,7 @@ jobs:
 
   build:
     name: Build ${{ matrix.arch }} image
-    needs: init
+    needs: [release, init]
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
@@ -49,15 +87,15 @@ jobs:
           container-registry-password: ${{ secrets.GITHUB_TOKEN }}
           image: ${{ matrix.image }}
           image-tags: |
-            ${{ github.event.release.tag_name || 'latest' }}
+            v${{ needs.release.outputs.version }}
             latest
           push: "true"
-          version: ${{ github.event.release.tag_name || 'dev' }}
+          version: ${{ needs.release.outputs.version }}
           context: bluelink-token
 
   manifest:
     name: Publish multi-arch manifest
-    needs: [init, build]
+    needs: [release, init, build]
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -70,5 +108,5 @@ jobs:
           container-registry-password: ${{ secrets.GITHUB_TOKEN }}
           image-name: ${{ env.IMAGE_NAME }}
           image-tags: |
-            ${{ github.event.release.tag_name || 'latest' }}
+            v${{ needs.release.outputs.version }}
             latest
