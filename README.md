@@ -1,22 +1,28 @@
-# Bluelink Token Generator
+<p align="center">
+  <img src="bluelink-token/logo.png" alt="Bluelink Token Generator" width="200">
+</p>
 
-![Supports aarch64 Architecture][aarch64-shield]
-![Supports amd64 Architecture][amd64-shield]
-![GitHub Release][release-shield]
-![License][license-shield]
+<h1 align="center">Bluelink Token Generator</h1>
 
-[aarch64-shield]: https://img.shields.io/badge/aarch64-yes-green.svg
-[amd64-shield]: https://img.shields.io/badge/amd64-yes-green.svg
-[release-shield]: https://img.shields.io/github/v/release/TMA84/bluelink-refresh-token
-[license-shield]: https://img.shields.io/github/license/TMA84/bluelink-refresh-token
+<p align="center">
+  Generate Hyundai/Kia Bluelink refresh tokens for
+  <a href="https://evcc.io">evcc</a> and
+  <a href="https://www.home-assistant.io/">Home Assistant</a> —
+  directly from a web UI, no command line needed.
+</p>
 
-Generate Hyundai/Kia Bluelink refresh tokens for [evcc](https://evcc.io) and [Home Assistant](https://www.home-assistant.io/) integrations — directly from a web UI, no command line needed.
+<p align="center">
+  <img src="https://img.shields.io/badge/aarch64-yes-green.svg" alt="Supports aarch64">
+  <img src="https://img.shields.io/badge/amd64-yes-green.svg" alt="Supports amd64">
+  <img src="https://img.shields.io/github/v/release/TMA84/bluelink-refresh-token" alt="GitHub Release">
+  <img src="https://img.shields.io/github/license/TMA84/bluelink-refresh-token" alt="License">
+</p>
+
+---
 
 ## About
 
 This add-on runs a Chromium browser inside the container with the correct mobile user-agent required by the Bluelink OAuth flow. You interact with the browser through an embedded noVNC viewer to complete the login. The add-on then automatically extracts the refresh token.
-
-![Screenshot](bluelink-token/logo.png)
 
 ## Installation
 
