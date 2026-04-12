@@ -1,52 +1,69 @@
-# Bluelink Refresh Token
+# Bluelink Token Generator
 
-Home Assistant addon to generate Hyundai/Kia Bluelink refresh tokens for [evcc](https://evcc.io) and Home Assistant integrations.
+![Supports aarch64 Architecture][aarch64-shield]
+![Supports amd64 Architecture][amd64-shield]
+![GitHub Release][release-shield]
+![License][license-shield]
 
-## How it works
+[aarch64-shield]: https://img.shields.io/badge/aarch64-yes-green.svg
+[amd64-shield]: https://img.shields.io/badge/amd64-yes-green.svg
+[release-shield]: https://img.shields.io/github/v/release/TMA84/bluelink-refresh-token
+[license-shield]: https://img.shields.io/github/license/TMA84/bluelink-refresh-token
 
-This addon runs a Chromium browser inside the container with the correct mobile user-agent required by the Bluelink OAuth flow. You interact with the browser through an embedded noVNC viewer to complete the login. The addon then automatically extracts the refresh token.
+Generate Hyundai/Kia Bluelink refresh tokens for [evcc](https://evcc.io) and [Home Assistant](https://www.home-assistant.io/) integrations — directly from a web UI, no command line needed.
 
-1. Configure your brand (Hyundai/Kia) and optionally your credentials
-2. Click "Start token generation"
-3. Sign in via the embedded browser (credentials are auto-filled if configured)
-4. The refresh token is extracted and displayed
-5. Use the "Verify token" button to confirm it works
+## About
+
+This add-on runs a Chromium browser inside the container with the correct mobile user-agent required by the Bluelink OAuth flow. You interact with the browser through an embedded noVNC viewer to complete the login. The add-on then automatically extracts the refresh token.
+
+![Screenshot](bluelink-token/logo.png)
 
 ## Installation
 
-Add this repository to your Home Assistant addon store:
+1. Add this repository to your Home Assistant add-on store:
 
-```
-https://github.com/TMA84/bluelink-refresh-token
-```
+   [![Open your Home Assistant instance and show the add add-on repository dialog.][repo-badge]][repo-url]
 
-Settings → Add-ons → Add-on Store → three dots menu → Repositories → paste the URL above.
+   Or manually: **Settings → Add-ons → Add-on Store → ⋮ → Repositories** and paste:
+   ```
+   https://github.com/TMA84/bluelink-refresh-token
+   ```
+
+2. Find "Bluelink Token Generator" in the store and click **Install**.
+3. Configure your brand and optionally your credentials (see below).
+4. Start the add-on and open the **Web UI**.
+
+[repo-badge]: https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg
+[repo-url]: https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FTMA84%2Fbluelink-refresh-token
+
+## How to use
+
+1. Select your brand (Hyundai/Kia) on the start page
+2. Click **Start token generation**
+3. Sign in via the embedded browser (credentials are auto-filled if configured)
+4. The refresh token is extracted and displayed
+5. Use the **Verify token** button to confirm it works
+
+The generated refresh token is valid for **180 days**. After that, simply generate a new one.
 
 ## Configuration
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `brand` | Vehicle brand: `hyundai` or `kia` | `hyundai` |
+| `brand` | Vehicle brand | `hyundai` |
 | `username` | Bluelink email/username (optional, for auto-fill) | |
 | `password` | Bluelink password (optional, for auto-fill) | |
 
-## Ports
+## Where to use the token
 
-| Port | Description |
-|------|-------------|
-| 9876 | Web UI |
-| 6080 | noVNC (remote browser) |
+Use the refresh token as the **password** (not your Bluelink password) when configuring:
 
-## Usage
-
-The generated refresh token is valid for **180 days**. Use it as the password together with your regular username when configuring:
-
-- [evcc](https://docs.evcc.io/docs/devices/vehicles#hyundai--kia) vehicle integration
+- [evcc](https://docs.evcc.io/en/docs/devices/vehicles#hyundai-bluelink) — Hyundai/Kia vehicle integration
 - [Home Assistant Kia/Hyundai integration](https://github.com/Hyundai-Kia-Connect/kia_uvo)
 
-## Standalone mit Docker (ohne Home Assistant)
+## Standalone with Docker
 
-Falls du kein Home Assistant nutzt, kannst du den Container auch direkt mit Docker starten:
+If you don't use Home Assistant, you can run the container directly:
 
 ```bash
 docker run -d \
@@ -54,14 +71,18 @@ docker run -d \
   -p 9876:9876 \
   -p 6080:6080 \
   -e BRAND=hyundai \
-  -e BLUELINK_USERNAME=deine@email.de \
-  -e BLUELINK_PASSWORD=deinpasswort \
+  -e BLUELINK_USERNAME=your@email.com \
+  -e BLUELINK_PASSWORD=yourpassword \
   ghcr.io/tma84/bluelink-token:latest
 ```
 
-Danach erreichbar unter `http://localhost:9876`. Username und Passwort sind optional — ohne werden die Felder nicht automatisch ausgefüllt.
+Then open `http://localhost:9876`. Username and password are optional — without them, the fields won't be auto-filled.
 
-Das Image ist ein Multi-Arch Manifest und funktioniert automatisch auf `amd64` und `aarch64` (z.B. Raspberry Pi).
+The image is a multi-arch manifest and works on both `amd64` and `aarch64` (e.g. Raspberry Pi).
+
+## Support
+
+Got questions or issues? [Open an issue on GitHub.](https://github.com/TMA84/bluelink-refresh-token/issues)
 
 ## Credits
 
