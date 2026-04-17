@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.1.0
+
+### Neu
+- **Auto-Reset** — Seite wird nach erfolgreichem Transfer automatisch nach 30s zurückgesetzt (oder sofort per Button)
+
+### Fix
+- Optionale Felder in config.yaml — Addon startet ohne Zugangsdaten
+
 ## 3.0.0
 
 ### Neu
