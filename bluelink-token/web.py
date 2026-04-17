@@ -372,6 +372,25 @@ def index():
             test_html = '<div class="notice notice-success">Token verified — API connection successful.</div>'
         elif tr:
             test_html = f'<div class="notice notice-error">Verification failed: {html_lib.escape(tr)}</div>'
+        evcc_configured = bool(os.environ.get("EVCC_URL"))
+        if evcc_configured:
+            evcc_fields_html = '<div class="notice notice-info" style="margin-bottom:12px;">evcc connection configured via addon settings.</div>'
+        else:
+            evcc_fields_html = """
+    <div style="margin-bottom: 12px;">
+        <div class="section-label">evcc URL</div>
+        <input type="text" id="evcc-url-input" placeholder="http://192.168.1.100:7070" style="
+            width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px;
+            font-size: 14px; font-family: inherit;"
+            oninput="document.getElementById('evcc-url').value=this.value">
+    </div>
+    <div style="margin-bottom: 12px;">
+        <div class="section-label">evcc Admin Password</div>
+        <input type="password" id="evcc-password-input" placeholder="Admin password (leave empty if not set)" style="
+            width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px;
+            font-size: 14px; font-family: inherit;"
+            oninput="document.getElementById('evcc-password').value=this.value">
+    </div>"""
         return render(f"""
 <div class="card">
     <div class="card-title">Token generated</div>
@@ -406,18 +425,9 @@ def index():
     <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 16px;">
         Transfer the refresh token directly to an evcc instance in your network.
     </p>
-    <div style="margin-bottom: 12px;">
-        <div class="section-label">evcc URL</div>
-        <input type="text" id="evcc-url" value="{html_lib.escape(os.environ.get('EVCC_URL', ''))}" placeholder="http://192.168.1.100:7070" style="
-            width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px;
-            font-size: 14px; font-family: inherit;">
-    </div>
-    <div style="margin-bottom: 12px;">
-        <div class="section-label">evcc Admin Password</div>
-        <input type="password" id="evcc-password" value="{html_lib.escape(os.environ.get('EVCC_PASSWORD', ''))}" placeholder="Admin password (leave empty if not set)" style="
-            width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px;
-            font-size: 14px; font-family: inherit;">
-    </div>
+    <input type="hidden" id="evcc-url" value="{html_lib.escape(os.environ.get('EVCC_URL', ''))}">
+    <input type="hidden" id="evcc-password" value="{html_lib.escape(os.environ.get('EVCC_PASSWORD', ''))}">
+    {evcc_fields_html}
     <button class="btn btn-secondary" onclick="evccLoadVehicles()" id="evcc-connect-btn">Connect</button>
     <div id="evcc-vehicles" style="display:none; margin-top: 16px;">
         <div class="section-label">Vehicle</div>
