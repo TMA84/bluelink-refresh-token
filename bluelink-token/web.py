@@ -215,6 +215,7 @@ def get_token_thread(brand):
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
         options.add_argument("--window-size=1280,800")
+        options.add_argument("--start-maximized")
         options.add_argument(
             "user-agent=Mozilla/5.0 (Linux; Android 4.1.1; Galaxy Nexus "
             "Build/JRO03C) AppleWebKit/535.19 (KHTML, like Gecko) "

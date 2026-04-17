@@ -37,7 +37,19 @@ bashio::log.info "Starting Xvfb..."
 Xvfb :99 -screen 0 1280x800x24 -ac &
 sleep 1
 
-# Start window manager
+# Start window manager (no decorations)
+mkdir -p /root/.config/openbox
+cat > /root/.config/openbox/rc.xml << 'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_config xmlns="http://openbox.org/3.4/rc">
+  <applications>
+    <application class="*">
+      <decor>no</decor>
+      <maximized>yes</maximized>
+    </application>
+  </applications>
+</openbox_config>
+EOF
 openbox &
 sleep 1
 
