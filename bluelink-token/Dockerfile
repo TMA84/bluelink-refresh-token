@@ -40,6 +40,7 @@ RUN ls -la /usr/bin/chromium* /usr/lib/chromium/chromedriver 2>/dev/null || true
 RUN ln -sf /usr/lib/chromium/chromedriver /usr/bin/chromedriver 2>/dev/null || true
 
 COPY web.py /app/
+COPY config.yaml /app/
 COPY run.sh /
 COPY run-standalone.sh /
 RUN chmod a+x /run.sh /run-standalone.sh

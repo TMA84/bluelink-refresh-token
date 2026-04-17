@@ -16,14 +16,18 @@ app = Flask(__name__)
 
 VERSION = "dev"
 try:
-    import json as _json
-    with open("/app/../config.yaml") as _f:
-        import re as _re
-        for _line in _f:
-            _m = _re.match(r'^version:\s*"(.+)"', _line)
-            if _m:
-                VERSION = _m.group(1)
+    for _path in ["/app/config.yaml", "/config.yaml", "config.yaml", "../config.yaml"]:
+        try:
+            with open(_path) as _f:
+                for _line in _f:
+                    _m = re.match(r'^version:\s*"(.+)"', _line)
+                    if _m:
+                        VERSION = _m.group(1)
+                        break
+            if VERSION != "dev":
                 break
+        except FileNotFoundError:
+            continue
 except Exception:
     pass
 
