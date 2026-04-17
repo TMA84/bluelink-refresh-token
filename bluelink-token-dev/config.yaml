@@ -1,0 +1,22 @@
+name: "Bluelink Token Generator (Dev)"
+description: "DEV BUILD — Generate Hyundai/Kia Bluelink refresh tokens"
+version: "dev"
+slug: "bluelink_token_dev"
+arch:
+  - aarch64
+  - amd64
+url: "https://github.com/TMA84/bluelink-refresh-token"
+startup: services
+init: false
+ports:
+  9877/tcp: 9877
+  6081/tcp: 6081
+webui: "http://[HOST]:[PORT:9877]/"
+options:
+  brand: "hyundai"
+  username: ""
+  password: ""
+schema:
+  brand: list(hyundai|kia)
+  username: str
+  password: password

@@ -31,12 +31,12 @@ sleep 1
 
 # Start noVNC web client
 bashio::log.info "Starting noVNC on port 6080..."
-websockify --web /usr/share/novnc 6080 localhost:5900 &
+websockify --web /usr/share/novnc 6081 localhost:5900 &
 sleep 1
 
-bashio::log.info "noVNC available at port 6080"
-bashio::log.info "Web UI available at port 9876"
+bashio::log.info "noVNC available at port 6081"
+bashio::log.info "Web UI available at port 9877"
 
 # Activate virtual environment and run web server
 source /opt/venv/bin/activate
-exec gunicorn --bind 0.0.0.0:9876 --workers 1 --threads 4 --timeout 300 web:app
+exec gunicorn --bind 0.0.0.0:9877 --workers 1 --threads 4 --timeout 300 web:app
