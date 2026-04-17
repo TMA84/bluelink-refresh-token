@@ -84,6 +84,42 @@ The add-on can transfer the refresh token directly to an evcc instance:
 
 This works with evcc running as a Home Assistant add-on, Docker container, or native installation.
 
+## Token Expiry Sensor
+
+When running as a Home Assistant add-on, a sensor `sensor.bluelink_token_expiry` is automatically created after each token generation. It tracks when the token expires (180 days).
+
+| Attribute | Description |
+|-----------|-------------|
+| `state` | Expiry date (e.g. `2026-10-14`) |
+| `generated` | Date and time the token was generated |
+| `expires` | Date and time the token expires |
+| `days_remaining` | Days until expiry (180 at generation) |
+| `brand` | `hyundai` or `kia` |
+
+### Expiry Reminder Automation
+
+Get a notification 14 days before the token expires:
+
+```yaml
+automation:
+  - alias: "Bluelink Token Expiry Reminder"
+    trigger:
+      - platform: template
+        value_template: >
+          {{ (as_timestamp(states('sensor.bluelink_token_expiry')) - as_timestamp(now()))
+             / 86400 < 14 }}
+    action:
+      - service: notify.notify
+        data:
+          title: "Bluelink Token expires soon"
+          message: >
+            Your Bluelink refresh token expires on
+            {{ states('sensor.bluelink_token_expiry') }}.
+            Please generate a new one.
+```
+
+Or use the UI: **Settings → Automations → Create Automation** and add a template trigger with the condition above.
+
 ## Where to use the token
 
 Use the refresh token as the **password** (not your Bluelink password) when configuring:
