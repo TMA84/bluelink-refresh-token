@@ -118,7 +118,20 @@ automation:
             Please generate a new one.
 ```
 
-Or use the UI: **Settings → Automations → Create Automation** and add a template trigger with the condition above.
+Or set it up via the UI:
+
+1. Go to **Settings → Automations & Scenes → Create Automation → Create new automation**
+2. Under **Triggers**, click **Add Trigger** → choose **Template**
+3. Paste this as the template value:
+   ```
+   {{ (as_timestamp(states('sensor.bluelink_token_expiry')) - as_timestamp(now())) / 86400 < 14 }}
+   ```
+4. Under **Actions**, click **Add Action** → choose **Notifications: Send a notification**
+5. Set the title to `Bluelink Token expires soon` and the message to:
+   ```
+   Your Bluelink refresh token expires on {{ states('sensor.bluelink_token_expiry') }}. Please generate a new one.
+   ```
+6. Click **Save**
 
 ## Where to use the token
 
