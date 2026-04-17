@@ -41,71 +41,82 @@ BRAND_CONFIG = {
 
 STYLE = """
 :root {
-  --primary: #2563eb; --primary-hover: #1d4ed8; --primary-light: #dbeafe;
-  --accent: #7c3aed; --accent-light: #ede9fe;
-  --success: #059669; --success-bg: #d1fae5; --error: #dc2626; --error-bg: #fee2e2;
-  --warning: #d97706; --warning-bg: #fef3c7; --info: #2563eb; --info-bg: #dbeafe;
-  --text: #1e293b; --text-secondary: #64748b;
-  --border: #e2e8f0; --surface: #ffffff; --bg: #f1f5f9;
+  --evcc-green: #0fde41; --evcc-darker-green: #0ba631; --evcc-darkest-green: #076f20;
+  --evcc-yellow: #faf000; --evcc-dark-yellow: #f6bb0f;
+  --evcc-orange: #ff9000; --evcc-red: #fc440f;
+  --bg: #f3f3f7; --surface: #ffffff; --surface-border: #f9f9fb;
+  --text: #28293e; --text-secondary: #93949e;
+  --border: #e2e8f0;
+  --primary: #0ba631; --primary-hover: #076f20; --primary-light: #e6f9ec;
+  --success: #0ba631; --success-bg: #e6f9ec;
+  --error: #fc440f; --error-bg: #fff0ec;
+  --warning: #ff9000; --warning-bg: #fff5e6;
+  --info: #0ba631; --info-bg: #e6f9ec;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-       background: var(--bg); color: var(--text); min-height: 100vh; }
-.header { background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 50%, #7c3aed 100%);
-          padding: 20px 24px; margin-bottom: 24px; }
-.header-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; gap: 14px; }
-.header h1 { font-size: 20px; font-weight: 600; color: white; }
-.header .brand { font-size: 11px; font-weight: 600; color: white;
-                 background: rgba(255,255,255,0.2); padding: 3px 12px; border-radius: 20px;
-                 text-transform: uppercase; letter-spacing: 0.8px; backdrop-filter: blur(4px); }
-.container { max-width: 1100px; margin: 0 auto; padding: 0 24px 40px; }
-.card { background: var(--surface); border-radius: 12px; padding: 24px;
-        margin-bottom: 16px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
-.card-title { font-size: 17px; font-weight: 600; margin-bottom: 16px; }
+body { font-family: 'Montserrat', system-ui, -apple-system, 'Segoe UI', sans-serif;
+       background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; }
+.header { background: var(--text); padding: 20px 24px; margin-bottom: 24px; }
+.header-inner { max-width: 800px; margin: 0 auto; display: flex; align-items: center; gap: 14px; }
+.header h1 { font-size: 18px; font-weight: bold; color: white; text-transform: uppercase; }
+.header .brand { font-size: 11px; font-weight: bold; color: var(--evcc-green);
+                 background: rgba(15,222,65,0.15); padding: 3px 12px; border-radius: 20px;
+                 text-transform: uppercase; letter-spacing: 0.8px; }
+.container { max-width: 800px; margin: 0 auto; padding: 0 16px 40px; }
+.card { background: var(--surface); border-radius: 1rem; padding: 1.25rem;
+        margin-bottom: 16px; }
+.card-title { font-size: 1.25rem; font-weight: bold; margin-bottom: 16px; text-transform: uppercase; }
 .btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 24px;
-       border-radius: 8px; border: none; font-size: 14px; font-weight: 500;
-       cursor: pointer; text-decoration: none; transition: all 0.2s; font-family: inherit; }
-.btn-primary { background: var(--primary); color: white; }
-.btn-primary:hover { background: var(--primary-hover); box-shadow: 0 2px 8px rgba(37,99,235,0.3); }
-.btn-secondary { background: var(--surface); color: var(--primary); border: 1px solid var(--primary); }
-.btn-secondary:hover { background: var(--primary-light); }
-.btn-danger { background: var(--surface); color: var(--error); border: 1px solid var(--error); }
+       border-radius: 8px; border: 2px solid transparent; font-size: 14px; font-weight: bold;
+       cursor: pointer; text-decoration: none; transition: all 0.25s; font-family: inherit; }
+.btn-primary { background: var(--primary); color: var(--bg); border-color: var(--primary); }
+.btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+.btn-secondary { background: transparent; color: var(--primary); border-color: var(--primary); }
+.btn-secondary:hover { color: var(--primary-hover); border-color: var(--primary-hover); }
+.btn-danger { background: transparent; color: var(--error); border-color: var(--error); }
 .btn-danger:hover { background: var(--error-bg); }
-.token-label { font-size: 11px; font-weight: 600; color: var(--accent);
+.token-label { font-size: 11px; font-weight: bold; color: var(--primary);
                text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
-.token-box { background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-             border: 1px solid var(--border); padding: 16px 18px; border-radius: 8px;
-             word-break: break-all; font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
-             font-size: 13px; line-height: 1.7; border-left: 3px solid var(--accent); }
+.token-box { background: var(--bg); border: 1px solid var(--border); padding: 16px 18px;
+             border-radius: 10px; word-break: break-all;
+             font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
+             font-size: 13px; line-height: 1.7; border-left: 3px solid var(--primary); }
 .copy-link { color: var(--primary); cursor: pointer; font-size: 13px; border: none;
-             background: none; font-family: inherit; margin-top: 8px; display: inline-block; font-weight: 500; }
-.copy-link:hover { text-decoration: underline; }
-.notice { padding: 14px 18px; border-radius: 8px; margin-bottom: 16px;
-          font-size: 14px; line-height: 1.5; border-left: 4px solid transparent; }
-.notice-success { background: var(--success-bg); color: var(--success); border-left-color: var(--success); }
-.notice-error { background: var(--error-bg); color: var(--error); border-left-color: var(--error); }
-.notice-warning { background: var(--warning-bg); color: var(--warning); border-left-color: var(--warning); }
-.notice-info { background: var(--info-bg); color: var(--info); border-left-color: var(--info); }
+             background: none; font-family: inherit; margin-top: 8px; display: inline-block; font-weight: bold; }
+.copy-link:hover { color: var(--primary-hover); }
+.notice { padding: 14px 18px; border-radius: 10px; margin-bottom: 16px;
+          font-size: 14px; line-height: 1.5; }
+.notice-success { background: var(--success-bg); color: var(--success); }
+.notice-error { background: var(--error-bg); color: var(--error); }
+.notice-warning { background: var(--warning-bg); color: var(--warning); }
+.notice-info { background: var(--info-bg); color: var(--info); }
 .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
 .actions { display: flex; gap: 10px; flex-wrap: wrap; }
-.log { background: #0f172a; color: #94a3b8; padding: 16px 18px; border-radius: 8px;
+.log { background: var(--text); color: var(--text-secondary); padding: 16px 18px; border-radius: 10px;
        font-family: 'JetBrains Mono', 'Roboto Mono', monospace; font-size: 12px;
        max-height: 200px; overflow-y: auto; margin: 12px 0; line-height: 1.8; }
-.log .ok { color: #34d399; } .log .warn { color: #fbbf24; } .log .err { color: #f87171; }
-.vnc-frame { width: 100%; height: 700px; border: 1px solid var(--border);
-             border-radius: 8px; margin: 12px 0; background: #0f172a; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.log .ok { color: var(--evcc-green); } .log .warn { color: var(--evcc-dark-yellow); } .log .err { color: var(--evcc-red); }
+.vnc-frame { width: 100%; height: 700px; border: none;
+             border-radius: 10px; margin: 12px 0; background: var(--text); }
 .paste-row { display: flex; gap: 8px; margin-bottom: 4px; }
 .paste-row input { flex: 1; padding: 10px 14px; border: 1px solid var(--border);
-                   border-radius: 8px; font-size: 14px; font-family: inherit;
-                   -webkit-text-security: disc; transition: border-color 0.2s; }
-.paste-row input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+                   border-radius: 10px; font-size: 14px; font-family: inherit;
+                   background: var(--surface); color: var(--text);
+                   -webkit-text-security: disc; transition: border-color 0.25s; }
+.paste-row input:focus { outline: none; border-color: var(--primary); }
 .paste-row button { white-space: nowrap; }
 .hint { font-size: 12px; color: var(--text-secondary); margin-top: 6px; line-height: 1.5; }
-.section-label { font-size: 13px; font-weight: 600; color: var(--text-secondary);
+.section-label { font-size: 13px; font-weight: bold; color: var(--text-secondary);
                  margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
 p { line-height: 1.6; }
-details summary { cursor: pointer; font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+details summary { cursor: pointer; font-size: 13px; color: var(--text-secondary); font-weight: bold; }
 details summary:hover { color: var(--primary); }
+select, input[type="text"], input[type="password"] {
+  background: var(--surface); color: var(--text); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 14px; font-size: 14px; font-family: inherit;
+  transition: border-color 0.25s; }
+select:focus, input[type="text"]:focus, input[type="password"]:focus {
+  outline: none; border-color: var(--primary); }
 """
 
 SCRIPT = """
@@ -142,7 +153,7 @@ def render(content):
 <html lang="de"><head>
 <title>Bluelink Token Generator</title>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
 <style>{STYLE}</style></head><body>
 <div class="header"><div class="header-inner">
 <h1>Bluelink Token Generator</h1>
