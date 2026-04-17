@@ -461,8 +461,14 @@ function evccLoadVehicles() {{
             opt.textContent = v.title + ' (' + v.template + ')';
             select.appendChild(opt);
         }});
-        document.getElementById('evcc-vehicles').style.display = 'block';
-        resultDiv.innerHTML = '<div class="notice notice-success">Connected — ' + d.vehicles.length + ' vehicle(s) found.</div>';
+        if (d.vehicles.length === 1) {{
+            // Single vehicle — auto-send token
+            resultDiv.innerHTML = '<div class="notice notice-info">Found ' + d.vehicles[0].title + ' — sending token...</div>';
+            evccSendToken();
+        }} else {{
+            document.getElementById('evcc-vehicles').style.display = 'block';
+            resultDiv.innerHTML = '<div class="notice notice-success">Connected — ' + d.vehicles.length + ' vehicles found. Select one below.</div>';
+        }}
     }}).catch(function(e) {{ btn.textContent = 'Connect'; btn.disabled = false; resultDiv.innerHTML = '<div class="notice notice-error">Connection failed: ' + e + '</div>'; }});
 }}
 function evccSendToken() {{
@@ -475,22 +481,25 @@ function evccSendToken() {{
         method: 'POST', headers: {{'Content-Type': 'application/json'}},
         body: JSON.stringify({{url: url, password: pw, vehicle_id: parseInt(vid)}})
     }}).then(function(r) {{ return r.json(); }}).then(function(d) {{
-        if (d.ok) {{ resultDiv.innerHTML = '<div class="notice notice-success">Token successfully transferred to evcc! evcc needs a restart to apply the change.</div><button class="btn btn-secondary" style="margin-top:10px;" onclick="evccRestart()">Restart evcc</button>'; }}
-        else {{ resultDiv.innerHTML = '<div class="notice notice-error">' + d.error + '</div>'; }}
+        if (d.ok) {{
+            resultDiv.innerHTML = '<div class="notice notice-success">Token transferred — restarting evcc...</div>';
+            evccRestart();
+        }} else {{
+            resultDiv.innerHTML = '<div class="notice notice-error">' + d.error + '</div>';
+        }}
     }}).catch(function(e) {{ resultDiv.innerHTML = '<div class="notice notice-error">Transfer failed: ' + e + '</div>'; }});
 }}
 function evccRestart() {{
     var url = document.getElementById('evcc-url').value;
     var pw = document.getElementById('evcc-password').value;
     var resultDiv = document.getElementById('evcc-result');
-    resultDiv.innerHTML = '<div class="notice notice-info">Restarting evcc...</div>';
     fetch('/api/evcc/restart', {{
         method: 'POST', headers: {{'Content-Type': 'application/json'}},
         body: JSON.stringify({{url: url, password: pw}})
     }}).then(function(r) {{ return r.json(); }}).then(function(d) {{
-        if (d.ok) {{ resultDiv.innerHTML = '<div class="notice notice-success">evcc is restarting. It should be back in a few seconds.</div>'; }}
-        else {{ resultDiv.innerHTML = '<div class="notice notice-error">' + d.error + '</div>'; }}
-    }}).catch(function(e) {{ resultDiv.innerHTML = '<div class="notice notice-error">Restart failed: ' + e + '</div>'; }});
+        if (d.ok) {{ resultDiv.innerHTML = '<div class="notice notice-success">Token transferred and evcc restarted successfully!</div>'; }}
+        else {{ resultDiv.innerHTML = '<div class="notice notice-success">Token transferred.</div><div class="notice notice-warning" style="margin-top:8px;">Could not restart evcc automatically: ' + d.error + '. Please restart evcc manually.</div>'; }}
+    }}).catch(function(e) {{ resultDiv.innerHTML = '<div class="notice notice-success">Token transferred.</div><div class="notice notice-warning" style="margin-top:8px;">Could not restart evcc automatically. Please restart evcc manually.</div>'; }});
 }}
 </script>""")
 
