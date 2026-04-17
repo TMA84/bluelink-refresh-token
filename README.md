@@ -80,7 +80,7 @@ The add-on can transfer the refresh token directly to an evcc instance:
 1. Configure `evcc_url` (and optionally `evcc_password`) in the add-on settings
 2. After token generation, the add-on connects to evcc automatically
 3. If one vehicle is found → token is sent and evcc is restarted automatically
-4. If multiple vehicles are found → select which ones should receive the token
+4. If multiple vehicles are found → select which ones should receive the token, evcc is restarted after transfer
 
 This works with evcc running as a Home Assistant add-on, Docker container, or native installation.
 
