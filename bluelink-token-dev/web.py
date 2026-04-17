@@ -465,9 +465,22 @@ function evccSendToken() {{
         method: 'POST', headers: {{'Content-Type': 'application/json'}},
         body: JSON.stringify({{url: url, password: pw, vehicle_id: parseInt(vid)}})
     }}).then(function(r) {{ return r.json(); }}).then(function(d) {{
-        if (d.ok) {{ resultDiv.innerHTML = '<div class="notice notice-success">Token successfully transferred to evcc!</div>'; }}
+        if (d.ok) {{ resultDiv.innerHTML = '<div class="notice notice-success">Token successfully transferred to evcc! evcc needs a restart to apply the change.</div><button class="btn btn-secondary" style="margin-top:10px;" onclick="evccRestart()">Restart evcc</button>'; }}
         else {{ resultDiv.innerHTML = '<div class="notice notice-error">' + d.error + '</div>'; }}
     }}).catch(function(e) {{ resultDiv.innerHTML = '<div class="notice notice-error">Transfer failed: ' + e + '</div>'; }});
+}}
+function evccRestart() {{
+    var url = document.getElementById('evcc-url').value;
+    var pw = document.getElementById('evcc-password').value;
+    var resultDiv = document.getElementById('evcc-result');
+    resultDiv.innerHTML = '<div class="notice notice-info">Restarting evcc...</div>';
+    fetch('/api/evcc/restart', {{
+        method: 'POST', headers: {{'Content-Type': 'application/json'}},
+        body: JSON.stringify({{url: url, password: pw}})
+    }}).then(function(r) {{ return r.json(); }}).then(function(d) {{
+        if (d.ok) {{ resultDiv.innerHTML = '<div class="notice notice-success">evcc is restarting. It should be back in a few seconds.</div>'; }}
+        else {{ resultDiv.innerHTML = '<div class="notice notice-error">' + d.error + '</div>'; }}
+    }}).catch(function(e) {{ resultDiv.innerHTML = '<div class="notice notice-error">Restart failed: ' + e + '</div>'; }});
 }}
 </script>""")
 
@@ -646,6 +659,31 @@ def evcc_update():
                            json=payload, timeout=15)
         if resp.status_code != 200:
             return jsonify({"ok": False, "error": f"Update failed ({resp.status_code}): {resp.text[:200]}"})
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+@app.route("/api/evcc/restart", methods=["POST"])
+def evcc_restart():
+    """Restart evcc via shutdown endpoint (host system restarts it)."""
+    data = request.get_json()
+    evcc_url = data.get("url", "").rstrip("/")
+    password = data.get("password", "")
+    if not evcc_url:
+        return jsonify({"ok": False, "error": "No evcc URL provided"})
+    try:
+        session = req_lib.Session()
+        auth_resp = session.get(f"{evcc_url}/api/auth/status", timeout=10)
+        needs_auth = auth_resp.status_code == 200 and auth_resp.text.strip() == "false"
+        if needs_auth and password:
+            session.post(f"{evcc_url}/api/auth/login",
+                         json={"password": password}, timeout=10)
+        resp = session.post(f"{evcc_url}/api/system/shutdown", timeout=10)
+        if resp.status_code in (200, 204):
+            return jsonify({"ok": True})
+        return jsonify({"ok": False, "error": f"Restart failed ({resp.status_code})"})
+    except req_lib.exceptions.ConnectionError:
+        # Connection error is expected — evcc is shutting down
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
