@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.2.0
+
+### Neu
+- **Standalone Startup Script** — `run-standalone.sh` für Docker ohne Home Assistant
+- Docker Compose nutzt jetzt das richtige Script mit DBUS-Fix und openbox-Konfiguration
+
+### Fix
+- "Chrome instance exited" Fehler bei Docker-Standalone behoben
+
 ## 3.1.1
 
 ### Fix

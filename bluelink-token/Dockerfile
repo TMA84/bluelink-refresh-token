@@ -41,7 +41,8 @@ RUN ln -sf /usr/lib/chromium/chromedriver /usr/bin/chromedriver 2>/dev/null || t
 
 COPY web.py /app/
 COPY run.sh /
-RUN chmod a+x /run.sh
+COPY run-standalone.sh /
+RUN chmod a+x /run.sh /run-standalone.sh
 
 EXPOSE 9876 6080
 
