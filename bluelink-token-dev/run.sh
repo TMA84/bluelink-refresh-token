@@ -1,10 +1,23 @@
 #!/usr/bin/with-contenv bashio
 
 BRAND=$(bashio::config 'brand')
-USERNAME=$(bashio::config 'username')
-PASSWORD=$(bashio::config 'password')
-EVCC_URL=$(bashio::config 'evcc_url')
-EVCC_PASSWORD=$(bashio::config 'evcc_password')
+USERNAME=""
+PASSWORD=""
+EVCC_URL=""
+EVCC_PASSWORD=""
+
+if bashio::config.has_value 'username'; then
+    USERNAME=$(bashio::config 'username')
+fi
+if bashio::config.has_value 'password'; then
+    PASSWORD=$(bashio::config 'password')
+fi
+if bashio::config.has_value 'evcc_url'; then
+    EVCC_URL=$(bashio::config 'evcc_url')
+fi
+if bashio::config.has_value 'evcc_password'; then
+    EVCC_PASSWORD=$(bashio::config 'evcc_password')
+fi
 export BRAND
 export BLUELINK_USERNAME="$USERNAME"
 export BLUELINK_PASSWORD="$PASSWORD"
