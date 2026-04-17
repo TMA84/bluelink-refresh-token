@@ -430,16 +430,14 @@ def index():
     {evcc_fields_html}
     <button class="btn btn-secondary" onclick="evccLoadVehicles()" id="evcc-connect-btn">Connect</button>
     <div id="evcc-vehicles" style="display:none; margin-top: 16px;">
-        <div class="section-label">Vehicle</div>
-        <select id="evcc-vehicle-select" style="
-            width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px;
-            font-size: 14px; font-family: inherit; background: var(--surface); margin-bottom: 12px;">
-        </select>
-        <button class="btn btn-primary" onclick="evccSendToken()">Send token to evcc</button>
+        <div class="section-label">Vehicles</div>
+        <div id="evcc-vehicle-list" style="margin-bottom: 12px;"></div>
+        <button class="btn btn-primary" onclick="evccSendToken()">Send token to selected vehicles</button>
     </div>
     <div id="evcc-result" style="margin-top: 12px;"></div>
 </div>
 <script>
+var evccVehicles = [];
 function evccLoadVehicles() {{
     var url = document.getElementById('evcc-url').value;
     var pw = document.getElementById('evcc-password').value;
@@ -453,41 +451,62 @@ function evccLoadVehicles() {{
         btn.textContent = 'Connect'; btn.disabled = false;
         if (!d.ok) {{ resultDiv.innerHTML = '<div class="notice notice-error">' + d.error + '</div>'; return; }}
         if (d.vehicles.length === 0) {{ resultDiv.innerHTML = '<div class="notice notice-warning">No Hyundai/Kia vehicles found in evcc.</div>'; return; }}
-        var select = document.getElementById('evcc-vehicle-select');
-        select.innerHTML = '';
-        d.vehicles.forEach(function(v) {{
-            var opt = document.createElement('option');
-            opt.value = v.id;
-            opt.textContent = v.title + ' (' + v.template + ')';
-            select.appendChild(opt);
-        }});
+        evccVehicles = d.vehicles;
         if (d.vehicles.length === 1) {{
-            // Single vehicle — auto-send token
             resultDiv.innerHTML = '<div class="notice notice-info">Found ' + d.vehicles[0].title + ' — sending token...</div>';
-            evccSendToken();
+            evccSendToVehicles([d.vehicles[0].id]);
         }} else {{
+            var listDiv = document.getElementById('evcc-vehicle-list');
+            listDiv.innerHTML = '';
+            d.vehicles.forEach(function(v) {{
+                var label = document.createElement('label');
+                label.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;';
+                var cb = document.createElement('input');
+                cb.type = 'checkbox'; cb.value = v.id; cb.checked = true;
+                cb.style.cssText = 'width:18px;height:18px;';
+                label.appendChild(cb);
+                label.appendChild(document.createTextNode(v.title + ' (' + v.template + ')'));
+                listDiv.appendChild(label);
+            }});
             document.getElementById('evcc-vehicles').style.display = 'block';
-            resultDiv.innerHTML = '<div class="notice notice-success">Connected — ' + d.vehicles.length + ' vehicles found. Select one below.</div>';
+            resultDiv.innerHTML = '<div class="notice notice-success">Connected — ' + d.vehicles.length + ' vehicles found. All selected by default.</div>';
         }}
     }}).catch(function(e) {{ btn.textContent = 'Connect'; btn.disabled = false; resultDiv.innerHTML = '<div class="notice notice-error">Connection failed: ' + e + '</div>'; }});
 }}
 function evccSendToken() {{
+    var checkboxes = document.querySelectorAll('#evcc-vehicle-list input[type=checkbox]:checked');
+    var ids = Array.from(checkboxes).map(function(cb) {{ return parseInt(cb.value); }});
+    if (ids.length === 0) {{ document.getElementById('evcc-result').innerHTML = '<div class="notice notice-warning">No vehicles selected.</div>'; return; }}
+    evccSendToVehicles(ids);
+}}
+function evccSendToVehicles(ids) {{
     var url = document.getElementById('evcc-url').value;
     var pw = document.getElementById('evcc-password').value;
-    var vid = document.getElementById('evcc-vehicle-select').value;
     var resultDiv = document.getElementById('evcc-result');
-    resultDiv.innerHTML = '<div class="notice notice-info">Sending token...</div>';
-    fetch('/api/evcc/update', {{
-        method: 'POST', headers: {{'Content-Type': 'application/json'}},
-        body: JSON.stringify({{url: url, password: pw, vehicle_id: parseInt(vid)}})
-    }}).then(function(r) {{ return r.json(); }}).then(function(d) {{
-        if (d.ok) {{
-            resultDiv.innerHTML = '<div class="notice notice-success">Token transferred — restarting evcc...</div>';
-            evccRestart();
-        }} else {{
-            resultDiv.innerHTML = '<div class="notice notice-error">' + d.error + '</div>';
-        }}
-    }}).catch(function(e) {{ resultDiv.innerHTML = '<div class="notice notice-error">Transfer failed: ' + e + '</div>'; }});
+    var total = ids.length, done = 0, errors = [];
+    resultDiv.innerHTML = '<div class="notice notice-info">Sending token to ' + total + ' vehicle(s)...</div>';
+    ids.forEach(function(vid) {{
+        fetch('/api/evcc/update', {{
+            method: 'POST', headers: {{'Content-Type': 'application/json'}},
+            body: JSON.stringify({{url: url, password: pw, vehicle_id: vid}})
+        }}).then(function(r) {{ return r.json(); }}).then(function(d) {{
+            if (!d.ok) errors.push(d.error);
+            done++;
+            if (done === total) evccTransferDone(total, errors);
+        }}).catch(function(e) {{ errors.push(String(e)); done++; if (done === total) evccTransferDone(total, errors); }});
+    }});
+}}
+function evccTransferDone(total, errors) {{
+    var resultDiv = document.getElementById('evcc-result');
+    var ok = total - errors.length;
+    if (errors.length === 0) {{
+        resultDiv.innerHTML = '<div class="notice notice-success">Token sent to ' + ok + ' vehicle(s) — restarting evcc...</div>';
+        evccRestart();
+    }} else if (ok > 0) {{
+        resultDiv.innerHTML = '<div class="notice notice-warning">Token sent to ' + ok + '/' + total + ' vehicle(s). Errors: ' + errors.join(', ') + '</div><button class="btn btn-secondary" style="margin-top:10px;" onclick="evccRestart()">Restart evcc</button>';
+    }} else {{
+        resultDiv.innerHTML = '<div class="notice notice-error">Transfer failed: ' + errors.join(', ') + '</div>';
+    }}
 }}
 function evccRestart() {{
     var url = document.getElementById('evcc-url').value;
