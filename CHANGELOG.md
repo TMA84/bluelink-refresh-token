@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.9.0
+
+### Neu
+- **evcc Integration** — Refresh Token direkt an eine evcc-Instanz im Netzwerk übertragen
+  - Login mit evcc Admin-Passwort
+  - Automatische Erkennung vorhandener Hyundai/Kia Fahrzeuge
+  - Token wird getestet und dann als Passwort im Fahrzeug aktualisiert
+
 ## 2.8.3
 
 ### Fix

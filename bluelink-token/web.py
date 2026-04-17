@@ -400,7 +400,76 @@ def index():
     </div>
     <hr class="divider">
     <details><summary>Show log</summary><div class="log">{format_log()}</div></details>
-</div>""")
+</div>
+<div class="card">
+    <div class="card-title">Send to evcc</div>
+    <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 16px;">
+        Transfer the refresh token directly to an evcc instance in your network.
+    </p>
+    <div style="margin-bottom: 12px;">
+        <div class="section-label">evcc URL</div>
+        <input type="text" id="evcc-url" placeholder="http://192.168.1.100:7070" style="
+            width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px;
+            font-size: 14px; font-family: inherit;">
+    </div>
+    <div style="margin-bottom: 12px;">
+        <div class="section-label">evcc Admin Password</div>
+        <input type="password" id="evcc-password" placeholder="Admin password" style="
+            width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px;
+            font-size: 14px; font-family: inherit;">
+    </div>
+    <button class="btn btn-secondary" onclick="evccLoadVehicles()" id="evcc-connect-btn">Connect</button>
+    <div id="evcc-vehicles" style="display:none; margin-top: 16px;">
+        <div class="section-label">Vehicle</div>
+        <select id="evcc-vehicle-select" style="
+            width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px;
+            font-size: 14px; font-family: inherit; background: var(--surface); margin-bottom: 12px;">
+        </select>
+        <button class="btn btn-primary" onclick="evccSendToken()">Send token to evcc</button>
+    </div>
+    <div id="evcc-result" style="margin-top: 12px;"></div>
+</div>
+<script>
+function evccLoadVehicles() {{
+    var url = document.getElementById('evcc-url').value;
+    var pw = document.getElementById('evcc-password').value;
+    var btn = document.getElementById('evcc-connect-btn');
+    var resultDiv = document.getElementById('evcc-result');
+    btn.textContent = 'Connecting...'; btn.disabled = true; resultDiv.innerHTML = '';
+    fetch('/api/evcc/vehicles', {{
+        method: 'POST', headers: {{'Content-Type': 'application/json'}},
+        body: JSON.stringify({{url: url, password: pw}})
+    }}).then(function(r) {{ return r.json(); }}).then(function(d) {{
+        btn.textContent = 'Connect'; btn.disabled = false;
+        if (!d.ok) {{ resultDiv.innerHTML = '<div class="notice notice-error">' + d.error + '</div>'; return; }}
+        if (d.vehicles.length === 0) {{ resultDiv.innerHTML = '<div class="notice notice-warning">No Hyundai/Kia vehicles found in evcc.</div>'; return; }}
+        var select = document.getElementById('evcc-vehicle-select');
+        select.innerHTML = '';
+        d.vehicles.forEach(function(v) {{
+            var opt = document.createElement('option');
+            opt.value = v.id;
+            opt.textContent = v.title + ' (' + v.template + ')';
+            select.appendChild(opt);
+        }});
+        document.getElementById('evcc-vehicles').style.display = 'block';
+        resultDiv.innerHTML = '<div class="notice notice-success">Connected — ' + d.vehicles.length + ' vehicle(s) found.</div>';
+    }}).catch(function(e) {{ btn.textContent = 'Connect'; btn.disabled = false; resultDiv.innerHTML = '<div class="notice notice-error">Connection failed: ' + e + '</div>'; }});
+}}
+function evccSendToken() {{
+    var url = document.getElementById('evcc-url').value;
+    var pw = document.getElementById('evcc-password').value;
+    var vid = document.getElementById('evcc-vehicle-select').value;
+    var resultDiv = document.getElementById('evcc-result');
+    resultDiv.innerHTML = '<div class="notice notice-info">Sending token...</div>';
+    fetch('/api/evcc/update', {{
+        method: 'POST', headers: {{'Content-Type': 'application/json'}},
+        body: JSON.stringify({{url: url, password: pw, vehicle_id: parseInt(vid)}})
+    }}).then(function(r) {{ return r.json(); }}).then(function(d) {{
+        if (d.ok) {{ resultDiv.innerHTML = '<div class="notice notice-success">Token successfully transferred to evcc!</div>'; }}
+        else {{ resultDiv.innerHTML = '<div class="notice notice-error">' + d.error + '</div>'; }}
+    }}).catch(function(e) {{ resultDiv.innerHTML = '<div class="notice notice-error">Transfer failed: ' + e + '</div>'; }});
+}}
+</script>""")
 
     elif s == "error":
         err = html_lib.escape(state.get("error", "Unknown error"))
@@ -489,6 +558,85 @@ def api_type():
 @app.route("/api/status")
 def api_status():
     return jsonify({"status": state["status"], "log": format_log()})
+
+# ── evcc Integration ────────────────────────────────────────
+
+@app.route("/api/evcc/vehicles", methods=["POST"])
+def evcc_vehicles():
+    """Login to evcc and return list of Hyundai/Kia vehicles."""
+    data = request.get_json()
+    evcc_url = data.get("url", "").rstrip("/")
+    password = data.get("password", "")
+    if not evcc_url:
+        return jsonify({"ok": False, "error": "No evcc URL provided"})
+    try:
+        session = req_lib.Session()
+        # Login
+        resp = session.post(f"{evcc_url}/api/auth/login",
+                            json={"password": password}, timeout=10)
+        if resp.status_code != 200:
+            return jsonify({"ok": False, "error": f"Login failed ({resp.status_code})"})
+        # Get vehicles
+        resp = session.get(f"{evcc_url}/api/config/devices/vehicle", timeout=10)
+        if resp.status_code != 200:
+            return jsonify({"ok": False, "error": f"Could not fetch vehicles ({resp.status_code})"})
+        vehicles = resp.json()
+        # Filter for Hyundai/Kia templates
+        result = []
+        for v in vehicles:
+            cfg = v.get("config", {})
+            tmpl = cfg.get("template", "")
+            if tmpl in ("hyundai", "kia"):
+                result.append({
+                    "id": v.get("id"),
+                    "name": v.get("name", ""),
+                    "title": cfg.get("title", v.get("name", "")),
+                    "template": tmpl,
+                })
+        return jsonify({"ok": True, "vehicles": result})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+@app.route("/api/evcc/update", methods=["POST"])
+def evcc_update():
+    """Update a vehicle's password (refresh token) in evcc."""
+    data = request.get_json()
+    evcc_url = data.get("url", "").rstrip("/")
+    password = data.get("password", "")
+    vehicle_id = data.get("vehicle_id")
+    token = state.get("refresh_token")
+    if not all([evcc_url, vehicle_id, token]):
+        return jsonify({"ok": False, "error": "Missing parameters"})
+    try:
+        session = req_lib.Session()
+        # Login
+        resp = session.post(f"{evcc_url}/api/auth/login",
+                            json={"password": password}, timeout=10)
+        if resp.status_code != 200:
+            return jsonify({"ok": False, "error": f"Login failed ({resp.status_code})"})
+        # Get current vehicle config
+        resp = session.get(f"{evcc_url}/api/config/devices/vehicle/{vehicle_id}", timeout=10)
+        if resp.status_code != 200:
+            return jsonify({"ok": False, "error": f"Could not fetch vehicle ({resp.status_code})"})
+        vehicle = resp.json()
+        cfg = vehicle.get("config", {})
+        # Update password with refresh token
+        cfg["password"] = token
+        payload = {"type": vehicle.get("type", "template")}
+        payload.update(cfg)
+        # Test first
+        resp = session.post(f"{evcc_url}/api/config/test/vehicle/merge/{vehicle_id}",
+                            json=payload, timeout=30)
+        if resp.status_code != 200:
+            return jsonify({"ok": False, "error": f"Token test failed ({resp.status_code}): {resp.text[:200]}"})
+        # Apply update
+        resp = session.put(f"{evcc_url}/api/config/devices/vehicle/{vehicle_id}",
+                           json=payload, timeout=15)
+        if resp.status_code != 200:
+            return jsonify({"ok": False, "error": f"Update failed ({resp.status_code}): {resp.text[:200]}"})
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=9876)
