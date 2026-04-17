@@ -106,6 +106,8 @@ cd bluelink-refresh-token
 docker compose up -d
 ```
 
+The `docker-compose.yaml` is pre-configured with all available options. Just fill in your values and start the container. Port `9876` is the Web UI, port `6080` is the noVNC remote browser. The `shm_size: 256m` is required for Chromium to run stable inside the container.
+
 Then open `http://localhost:9876`.
 
 ### Docker Run

@@ -3,14 +3,19 @@ services:
     image: ghcr.io/tma84/bluelink-token:latest
     container_name: bluelink-token
     ports:
-      - "9876:9876"
-      - "6080:6080"
+      - "9876:9876"   # Web UI
+      - "6080:6080"   # noVNC (remote browser)
     environment:
-      - BRAND=auto              # auto, hyundai, or kia
-      - BLUELINK_USERNAME=      # Bluelink email (optional, for auto-fill)
-      - BLUELINK_PASSWORD=      # Bluelink password (optional, for auto-fill)
-      - EVCC_URL=               # e.g. http://192.168.1.100:7070 (optional)
-      - EVCC_PASSWORD=          # evcc admin password (optional)
+      # Vehicle brand: auto (show selector), hyundai, or kia
+      - BRAND=auto
+      # Bluelink credentials (optional) — auto-fills the login form
+      - BLUELINK_USERNAME=
+      - BLUELINK_PASSWORD=
+      # evcc connection (optional) — auto-transfers the token to evcc
+      - EVCC_URL=
+      - EVCC_PASSWORD=
+    # Chromium needs extra shared memory to run stable
     shm_size: 256m
+    # Use the standalone startup script (not the HA-specific run.sh)
     command: ["/run-standalone.sh"]
     restart: unless-stopped
