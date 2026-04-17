@@ -675,12 +675,39 @@ def evcc_update():
 
 @app.route("/api/evcc/restart", methods=["POST"])
 def evcc_restart():
-    """Restart evcc via shutdown endpoint (host system restarts it)."""
+    """Restart evcc — via HA Supervisor API if available, otherwise via evcc shutdown."""
     data = request.get_json()
     evcc_url = data.get("url", "").rstrip("/")
     password = data.get("password", "")
     if not evcc_url:
         return jsonify({"ok": False, "error": "No evcc URL provided"})
+
+    # Try HA Supervisor API first (if running as HA addon)
+    supervisor_token = os.environ.get("SUPERVISOR_TOKEN")
+    if supervisor_token:
+        try:
+            headers = {"Authorization": f"Bearer {supervisor_token}"}
+            # List all addons to find evcc
+            resp = req_lib.get("http://supervisor/addons", headers=headers, timeout=10)
+            if resp.status_code == 200:
+                addons = resp.json().get("data", {}).get("addons", [])
+                evcc_slug = None
+                for addon in addons:
+                    name = (addon.get("name", "") or "").lower()
+                    slug = (addon.get("slug", "") or "").lower()
+                    if "evcc" in name or "evcc" in slug:
+                        evcc_slug = addon.get("slug")
+                        break
+                if evcc_slug:
+                    resp = req_lib.post(f"http://supervisor/addons/{evcc_slug}/restart",
+                                        headers=headers, timeout=60)
+                    if resp.status_code == 200:
+                        return jsonify({"ok": True})
+                    return jsonify({"ok": False, "error": f"Supervisor restart failed ({resp.status_code})"})
+        except Exception:
+            pass  # Fall through to evcc shutdown
+
+    # Fallback: evcc shutdown endpoint (for Docker/native installs)
     try:
         session = req_lib.Session()
         auth_resp = session.get(f"{evcc_url}/api/auth/status", timeout=10)
