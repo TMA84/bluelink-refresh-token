@@ -454,7 +454,7 @@ def index():
     <input type="hidden" id="evcc-url" value="{html_lib.escape(os.environ.get('EVCC_URL', ''))}">
     <input type="hidden" id="evcc-password" value="{html_lib.escape(os.environ.get('EVCC_PASSWORD', ''))}">
     {evcc_fields_html}
-    <button class="btn btn-secondary" onclick="evccLoadVehicles()" id="evcc-connect-btn">Connect</button>
+    {"" if evcc_configured else '<button class="btn btn-secondary" onclick="evccLoadVehicles()" id="evcc-connect-btn">Connect</button>'}
     <div id="evcc-vehicles" style="display:none; margin-top: 16px;">
         <div class="section-label">Vehicles</div>
         <div id="evcc-vehicle-list" style="margin-bottom: 12px;"></div>
@@ -546,6 +546,7 @@ function evccRestart() {{
         else {{ resultDiv.innerHTML = '<div class="notice notice-success">Token transferred.</div><div class="notice notice-warning" style="margin-top:8px;">Could not restart evcc automatically: ' + d.error + '. Please restart evcc manually.</div>'; }}
     }}).catch(function(e) {{ resultDiv.innerHTML = '<div class="notice notice-success">Token transferred.</div><div class="notice notice-warning" style="margin-top:8px;">Could not restart evcc automatically. Please restart evcc manually.</div>'; }});
 }}
+{"// Auto-connect if evcc is configured\nwindow.addEventListener('load', function() { evccLoadVehicles(); });" if evcc_configured else ""}
 </script>""")
 
     elif s == "error":
