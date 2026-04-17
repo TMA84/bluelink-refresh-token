@@ -408,13 +408,13 @@ def index():
     </p>
     <div style="margin-bottom: 12px;">
         <div class="section-label">evcc URL</div>
-        <input type="text" id="evcc-url" placeholder="http://192.168.1.100:7070" style="
+        <input type="text" id="evcc-url" value="{html_lib.escape(os.environ.get('EVCC_URL', ''))}" placeholder="http://192.168.1.100:7070" style="
             width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px;
             font-size: 14px; font-family: inherit;">
     </div>
     <div style="margin-bottom: 12px;">
         <div class="section-label">evcc Admin Password</div>
-        <input type="password" id="evcc-password" placeholder="Admin password" style="
+        <input type="password" id="evcc-password" value="{html_lib.escape(os.environ.get('EVCC_PASSWORD', ''))}" placeholder="Admin password (leave empty if not set)" style="
             width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px;
             font-size: 14px; font-family: inherit;">
     </div>

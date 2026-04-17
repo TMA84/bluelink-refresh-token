@@ -3,9 +3,13 @@
 BRAND=$(bashio::config 'brand')
 USERNAME=$(bashio::config 'username')
 PASSWORD=$(bashio::config 'password')
+EVCC_URL=$(bashio::config 'evcc_url')
+EVCC_PASSWORD=$(bashio::config 'evcc_password')
 export BRAND
 export BLUELINK_USERNAME="$USERNAME"
 export BLUELINK_PASSWORD="$PASSWORD"
+export EVCC_URL
+export EVCC_PASSWORD
 export DISPLAY=:99
 export DBUS_SESSION_BUS_ADDRESS=/dev/null
 

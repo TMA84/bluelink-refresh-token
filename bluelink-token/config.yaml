@@ -17,7 +17,11 @@ options:
   brand: "hyundai"
   username: ""
   password: ""
+  evcc_url: ""
+  evcc_password: ""
 schema:
   brand: list(hyundai|kia)
   username: str
   password: password
+  evcc_url: url?
+  evcc_password: password?
