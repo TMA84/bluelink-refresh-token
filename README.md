@@ -113,8 +113,9 @@ automation:
         data:
           title: "Bluelink Token expires soon"
           message: >
-            Your Bluelink refresh token expires on
-            {{ states('sensor.bluelink_token_expiry') }}.
+            Your Bluelink refresh token expires in
+            {{ ((as_timestamp(states('sensor.bluelink_token_expiry')) - as_timestamp(now())) / 86400) | round(0) }}
+            days ({{ states('sensor.bluelink_token_expiry') }}).
             Please generate a new one.
 ```
 
@@ -129,7 +130,7 @@ Or set it up via the UI:
 4. Under **Actions**, click **Add Action** → choose **Notifications: Send a notification**
 5. Set the title to `Bluelink Token expires soon` and the message to:
    ```
-   Your Bluelink refresh token expires on {{ states('sensor.bluelink_token_expiry') }}. Please generate a new one.
+   Your Bluelink token expires in {{ ((as_timestamp(states('sensor.bluelink_token_expiry')) - as_timestamp(now())) / 86400) | round(0) }} days ({{ states('sensor.bluelink_token_expiry') }}). Please generate a new one.
    ```
 6. Click **Save**
 
