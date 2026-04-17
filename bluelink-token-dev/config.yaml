@@ -13,13 +13,13 @@ ports:
   6081/tcp: 6081
 webui: "http://[HOST]:[PORT:9877]/"
 options:
-  brand: "hyundai"
+  brand: "auto"
   username: ""
   password: ""
   evcc_url: ""
   evcc_password: ""
 schema:
-  brand: list(hyundai|kia)
+  brand: list(auto|hyundai|kia)
   username: str
   password: password
   evcc_url: url?

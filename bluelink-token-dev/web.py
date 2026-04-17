@@ -181,7 +181,10 @@ def get_brand():
     override = state.get("brand_override")
     if override and override in BRAND_CONFIG:
         return override
-    return os.environ.get("BRAND", "hyundai").lower()
+    brand = os.environ.get("BRAND", "hyundai").lower()
+    if brand in BRAND_CONFIG:
+        return brand
+    return "hyundai"
 
 def log(msg, level="info"):
     state["log"].append((level, msg))
@@ -316,28 +319,34 @@ def index():
                       "You only need to click the Sign In button.") if has_creds else (
                       "No credentials configured. You will need to enter them manually in the browser. "
                       "Tip: Set username and password in the addon configuration for auto-fill.")
-        default_brand = os.environ.get("BRAND", "hyundai").lower()
+        default_brand = os.environ.get("BRAND", "auto").lower()
+        brand_fixed = default_brand in ("hyundai", "kia")
         kia_sel = "selected" if default_brand == "kia" else ""
         hyu_sel = "selected" if default_brand != "kia" else ""
+        if brand_fixed:
+            brand_html = f'<input type="hidden" name="brand" value="{default_brand}">'
+        else:
+            brand_html = f"""
+        <div style="margin-bottom: 16px;">
+            <label for="brand-select" class="section-label">Brand</label>
+            <select id="brand-select" name="brand" style="
+                padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px;
+                font-size: 14px; font-family: inherit; background: var(--surface);
+                cursor: pointer; min-width: 200px;">
+                <option value="hyundai" {hyu_sel}>Hyundai</option>
+                <option value="kia" {kia_sel}>Kia</option>
+            </select>
+        </div>"""
         return render(f"""
 <div class="card">
     <div class="card-title">Generate Refresh Token</div>
     <p style="margin-bottom: 12px; color: var(--text-secondary); font-size: 14px;">
         A Chromium browser will open in the background. You can interact with it
-        through the embedded viewer below to complete the Bluelink login.
+        through the embedded viewer below to complete the {"" if brand_fixed else ""}Bluelink login.
     </p>
     <div class="notice notice-info">{creds_note}</div>
     <form method="POST" action="/start">
-        <div style="margin-bottom: 16px;">
-            <label for="brand-select" class="section-label">Brand</label>
-            <select id="brand-select" name="brand" style="
-                padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px;
-                font-size: 14px; font-family: inherit; background: var(--surface);
-                cursor: pointer; min-width: 200px; transition: border-color 0.2s;">
-                <option value="hyundai" {hyu_sel}>Hyundai</option>
-                <option value="kia" {kia_sel}>Kia</option>
-            </select>
-        </div>
+        {brand_html}
         <button type="submit" class="btn btn-primary">Start token generation</button>
     </form>
 </div>""")
