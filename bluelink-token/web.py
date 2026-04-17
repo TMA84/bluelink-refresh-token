@@ -109,7 +109,7 @@ body { font-family: 'Montserrat', system-ui, -apple-system, 'Segoe UI', sans-ser
        font-family: 'JetBrains Mono', 'Roboto Mono', monospace; font-size: 12px;
        max-height: 200px; overflow-y: auto; margin: 12px 0; line-height: 1.8; }
 .log .ok { color: var(--evcc-green); } .log .warn { color: var(--evcc-dark-yellow); } .log .err { color: var(--evcc-red); }
-.vnc-frame { width: 100%; height: 700px; border: none;
+.vnc-frame { width: 100%; aspect-ratio: 16/10; border: none;
              border-radius: 10px; margin: 12px 0; background: var(--text); }
 .paste-row { display: flex; gap: 8px; margin-bottom: 4px; }
 .paste-row input { flex: 1; padding: 10px 14px; border: 1px solid var(--border);
