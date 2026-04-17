@@ -93,7 +93,7 @@ Use the refresh token as the **password** (not your Bluelink password) when conf
 
 ## Standalone with Docker
 
-If you don't use Home Assistant, you can run the container on any system with Docker or Podman — including macOS, Linux, and Windows.
+If you don't use Home Assistant, you can run the container on any system with Docker or Podman — macOS, Linux, and Windows.
 
 ### Docker Compose (recommended)
 
@@ -127,17 +127,9 @@ docker run -d \
 
 Then open `http://localhost:9876`.
 
-### macOS
+### Podman
 
-On macOS you need [Docker Desktop](https://www.docker.com/products/docker-desktop/) or [Podman](https://podman.io/). With Podman, replace `docker` with `podman` in the commands above.
-
-```bash
-# Docker Desktop
-docker compose up -d
-
-# Podman
-podman compose up -d
-```
+Replace `docker` with `podman` in the commands above. On macOS, install Podman via [podman.io](https://podman.io/).
 
 ### Environment Variables
 
@@ -151,7 +143,7 @@ All environment variables are optional:
 | `EVCC_URL` | evcc URL for automatic token transfer |
 | `EVCC_PASSWORD` | evcc admin password |
 
-The image is a multi-arch manifest and works on both `amd64` (Intel/AMD) and `aarch64` (Apple Silicon, Raspberry Pi).
+The image is a multi-arch manifest and works on `amd64` (Intel/AMD) and `aarch64` (Apple Silicon, Raspberry Pi).
 
 ## Support
 
