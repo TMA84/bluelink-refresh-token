@@ -1,5 +1,32 @@
 # Changelog
 
+## 3.0.0
+
+### Neu
+- **evcc Integration** — Refresh Token direkt an evcc übertragen
+  - evcc URL und Passwort über HA Addon-Konfiguration oder Docker Env-Variablen
+  - Automatische Erkennung vorhandener Hyundai/Kia Fahrzeuge
+  - Ein Fahrzeug → vollautomatisch: Token senden + evcc Restart
+  - Mehrere Fahrzeuge → Checkbox-Auswahl, alle vorausgewählt, Auto-Restart nach Transfer
+  - evcc Restart über HA Supervisor API (Addon) oder Shutdown-Endpoint (Docker/nativ)
+- **Brand-Option "auto"** — Hersteller-Auswahl nur wenn nötig
+  - `auto` (Default): Dropdown auf der Startseite
+  - `hyundai` / `kia`: Auswahl wird übersprungen
+- **Alle Konfigurationsfelder optional** — Addon startet auch komplett ohne Zugangsdaten
+- **evcc-inspiriertes Design** — Montserrat Font, evcc-Grün, runde Boxen, kompaktes Layout
+- **Versionsnummer im Footer**
+- **Auto-Connect** — evcc wird automatisch verbunden wenn URL konfiguriert ist
+
+### Verbessert
+- evcc Auth-Prüfung: Login nur wenn nötig (`/api/auth/status` Check)
+- Bessere Fehlermeldungen bei evcc-Verbindungsproblemen
+- `DBUS_SESSION_BUS_ADDRESS=/dev/null` für stabilen Chromium-Start
+- `run.sh` prüft optionale Felder mit `bashio::config.has_value`
+
+### Fix
+- Null-Check für Connect-Button bei Auto-Connect (Button ist ausgeblendet)
+- Auto-Restart auch bei teilweisem Transfer-Erfolg
+
 ## 2.9.0
 
 ### Neu
