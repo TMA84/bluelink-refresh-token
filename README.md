@@ -96,6 +96,14 @@ Use the refresh token as the **password** (not your Bluelink password) when conf
 If you don't use Home Assistant, you can run the container directly:
 
 ```bash
+docker compose up -d
+```
+
+Edit `docker-compose.yaml` to configure your credentials and evcc connection.
+
+Or use `docker run`:
+
+```bash
 docker run -d \
   --name bluelink-token \
   -p 9876:9876 \
