@@ -93,30 +93,53 @@ Use the refresh token as the **password** (not your Bluelink password) when conf
 
 ## Standalone with Docker
 
-If you don't use Home Assistant, you can run the container directly:
+If you don't use Home Assistant, you can run the container on any system with Docker or Podman — including macOS, Linux, and Windows.
+
+### Docker Compose (recommended)
+
+Clone the repo and edit `docker-compose.yaml` with your settings:
 
 ```bash
+git clone https://github.com/TMA84/bluelink-refresh-token.git
+cd bluelink-refresh-token
+# edit docker-compose.yaml with your credentials
 docker compose up -d
 ```
 
-Edit `docker-compose.yaml` to configure your credentials and evcc connection.
+Then open `http://localhost:9876`.
 
-Or use `docker run`:
+### Docker Run
 
 ```bash
 docker run -d \
   --name bluelink-token \
   -p 9876:9876 \
   -p 6080:6080 \
+  --shm-size=256m \
   -e BRAND=hyundai \
   -e BLUELINK_USERNAME=your@email.com \
   -e BLUELINK_PASSWORD=yourpassword \
   -e EVCC_URL=http://192.168.1.100:7070 \
   -e EVCC_PASSWORD=adminpassword \
-  ghcr.io/tma84/bluelink-token:latest
+  ghcr.io/tma84/bluelink-token:latest \
+  /run-standalone.sh
 ```
 
 Then open `http://localhost:9876`.
+
+### macOS
+
+On macOS you need [Docker Desktop](https://www.docker.com/products/docker-desktop/) or [Podman](https://podman.io/). With Podman, replace `docker` with `podman` in the commands above.
+
+```bash
+# Docker Desktop
+docker compose up -d
+
+# Podman
+podman compose up -d
+```
+
+### Environment Variables
 
 All environment variables are optional:
 
@@ -128,7 +151,7 @@ All environment variables are optional:
 | `EVCC_URL` | evcc URL for automatic token transfer |
 | `EVCC_PASSWORD` | evcc admin password |
 
-The image is a multi-arch manifest and works on both `amd64` and `aarch64` (e.g. Raspberry Pi).
+The image is a multi-arch manifest and works on both `amd64` (Intel/AMD) and `aarch64` (Apple Silicon, Raspberry Pi).
 
 ## Support
 
