@@ -571,13 +571,22 @@ def evcc_vehicles():
         return jsonify({"ok": False, "error": "No evcc URL provided"})
     try:
         session = req_lib.Session()
-        # Login
-        resp = session.post(f"{evcc_url}/api/auth/login",
-                            json={"password": password}, timeout=10)
-        if resp.status_code != 200:
-            return jsonify({"ok": False, "error": f"Login failed ({resp.status_code})"})
+        # Check if auth is required
+        auth_resp = session.get(f"{evcc_url}/api/auth/status", timeout=10)
+        needs_auth = auth_resp.status_code == 200 and auth_resp.text.strip() == "false"
+        if needs_auth:
+            if not password:
+                return jsonify({"ok": False, "error": "evcc requires admin password"})
+            resp = session.post(f"{evcc_url}/api/auth/login",
+                                json={"password": password}, timeout=10)
+            if resp.status_code == 401:
+                return jsonify({"ok": False, "error": "Invalid admin password"})
+            if resp.status_code != 200:
+                return jsonify({"ok": False, "error": f"Login failed ({resp.status_code})"})
         # Get vehicles
         resp = session.get(f"{evcc_url}/api/config/devices/vehicle", timeout=10)
+        if resp.status_code == 401:
+            return jsonify({"ok": False, "error": "Authentication required — please enter your evcc admin password"})
         if resp.status_code != 200:
             return jsonify({"ok": False, "error": f"Could not fetch vehicles ({resp.status_code})"})
         vehicles = resp.json()
@@ -609,11 +618,14 @@ def evcc_update():
         return jsonify({"ok": False, "error": "Missing parameters"})
     try:
         session = req_lib.Session()
-        # Login
-        resp = session.post(f"{evcc_url}/api/auth/login",
-                            json={"password": password}, timeout=10)
-        if resp.status_code != 200:
-            return jsonify({"ok": False, "error": f"Login failed ({resp.status_code})"})
+        # Check if auth is required and login
+        auth_resp = session.get(f"{evcc_url}/api/auth/status", timeout=10)
+        needs_auth = auth_resp.status_code == 200 and auth_resp.text.strip() == "false"
+        if needs_auth:
+            resp = session.post(f"{evcc_url}/api/auth/login",
+                                json={"password": password}, timeout=10)
+            if resp.status_code != 200:
+                return jsonify({"ok": False, "error": f"Login failed ({resp.status_code})"})
         # Get current vehicle config
         resp = session.get(f"{evcc_url}/api/config/devices/vehicle/{vehicle_id}", timeout=10)
         if resp.status_code != 200:
