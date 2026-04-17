@@ -13,6 +13,19 @@ import html as html_lib
 
 app = Flask(__name__)
 
+VERSION = "dev"
+try:
+    import json as _json
+    with open("/app/../config.yaml") as _f:
+        import re as _re
+        for _line in _f:
+            _m = _re.match(r'^version:\s*"(.+)"', _line)
+            if _m:
+                VERSION = _m.group(1)
+                break
+except Exception:
+    pass
+
 state = {
     "status": "idle", "refresh_token": None, "access_token": None,
     "error": None, "test_result": "", "log": [], "brand_override": None,
@@ -160,6 +173,8 @@ def render(content):
 <span class="brand">{brand}</span>
 </div></div>
 <div class="container">{content}</div>
+<div style="text-align:center;padding:16px;color:var(--text-secondary);font-size:12px;">
+Bluelink Token Generator v{VERSION}</div>
 <script>{SCRIPT}</script></body></html>"""
 
 def get_brand():
