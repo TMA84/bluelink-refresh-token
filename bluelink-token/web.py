@@ -2,6 +2,7 @@
 """Bluelink Token Generator - Web Application with Selenium + noVNC"""
 
 import os, re, time, threading, subprocess
+from datetime import datetime, timedelta, timezone
 import requests as req_lib
 from flask import Flask, request, jsonify, redirect as flask_redirect
 from selenium import webdriver
@@ -198,6 +199,42 @@ def format_log():
         lines.append(f'<span class="{cls}">{escaped}</span>' if cls else escaped)
     return "<br>".join(lines)
 
+TOKEN_EXPIRY_DAYS = 180
+
+def update_ha_sensor(brand):
+    """Create/update a Home Assistant sensor with the token expiry date."""
+    supervisor_token = os.environ.get("SUPERVISOR_TOKEN")
+    if not supervisor_token:
+        return  # Not running as HA addon
+    try:
+        now = datetime.now(timezone.utc)
+        expiry = now + timedelta(days=TOKEN_EXPIRY_DAYS)
+        headers = {
+            "Authorization": f"Bearer {supervisor_token}",
+            "Content-Type": "application/json",
+        }
+        sensor_data = {
+            "state": expiry.strftime("%Y-%m-%d"),
+            "attributes": {
+                "friendly_name": f"Bluelink Token Expiry ({brand.title()})",
+                "device_class": "date",
+                "icon": "mdi:key-clock",
+                "generated": now.strftime("%Y-%m-%d %H:%M"),
+                "expires": expiry.strftime("%Y-%m-%d %H:%M"),
+                "days_remaining": TOKEN_EXPIRY_DAYS,
+                "brand": brand,
+            },
+        }
+        resp = req_lib.post(
+            f"http://supervisor/core/api/states/sensor.bluelink_token_expiry",
+            headers=headers, json=sensor_data, timeout=10)
+        if resp.status_code in (200, 201):
+            log("Home Assistant sensor updated (sensor.bluelink_token_expiry).", "ok")
+        else:
+            log(f"Could not update HA sensor ({resp.status_code}).", "warn")
+    except Exception as e:
+        log(f"Could not update HA sensor: {e}", "warn")
+
 def get_token_thread(brand):
     config = BRAND_CONFIG[brand]
     base_url = config["base_url"]
@@ -288,6 +325,7 @@ def get_token_thread(brand):
             state["access_token"] = tokens.get("access_token", "N/A")
             state["status"] = "success"
             log("Token generated successfully.", "ok")
+            update_ha_sensor(brand)
         else:
             state["status"] = "error"
             state["error"] = f"API error {response.status_code}: {response.text[:200]}"
@@ -438,7 +476,7 @@ def index():
         <button class="copy-link" data-copy="refresh" onclick="copyToken('refresh')">Copy to clipboard</button>
     </div>
     <div class="notice notice-warning">
-        This token is valid for 180 days. After that you will need to generate a new one.
+        This token is valid for 180 days (expires {(datetime.now(timezone.utc) + timedelta(days=TOKEN_EXPIRY_DAYS)).strftime('%B %d, %Y')}). After that you will need to generate a new one.
     </div>
     <hr class="divider">
     <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 16px;">

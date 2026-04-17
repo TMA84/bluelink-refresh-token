@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.3.0
+
+### Neu
+- **Home Assistant Sensor** — `sensor.bluelink_token_expiry` wird nach Token-Generierung erstellt
+  - Zeigt das Ablaufdatum (180 Tage)
+  - Attribute: Generierungsdatum, Ablaufdatum, verbleibende Tage, Brand
+  - Device Class `date` für Automationen (z.B. Erinnerung vor Ablauf)
+- Ablaufdatum wird auf der Erfolgsseite angezeigt
+
 ## 3.2.0
 
 ### Neu
