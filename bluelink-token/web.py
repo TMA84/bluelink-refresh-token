@@ -469,12 +469,13 @@ function evccLoadVehicles() {{
     var pw = document.getElementById('evcc-password').value;
     var btn = document.getElementById('evcc-connect-btn');
     var resultDiv = document.getElementById('evcc-result');
-    btn.textContent = 'Connecting...'; btn.disabled = true; resultDiv.innerHTML = '';
+    if (btn) {{ btn.textContent = 'Connecting...'; btn.disabled = true; }}
+    resultDiv.innerHTML = '';
     fetch('/api/evcc/vehicles', {{
         method: 'POST', headers: {{'Content-Type': 'application/json'}},
         body: JSON.stringify({{url: url, password: pw}})
     }}).then(function(r) {{ return r.json(); }}).then(function(d) {{
-        btn.textContent = 'Connect'; btn.disabled = false;
+        if (btn) {{ btn.textContent = 'Connect'; btn.disabled = false; }}
         if (!d.ok) {{ resultDiv.innerHTML = '<div class="notice notice-error">' + d.error + '</div>'; return; }}
         if (d.vehicles.length === 0) {{ resultDiv.innerHTML = '<div class="notice notice-warning">No Hyundai/Kia vehicles found in evcc.</div>'; return; }}
         evccVehicles = d.vehicles;
@@ -497,7 +498,7 @@ function evccLoadVehicles() {{
             document.getElementById('evcc-vehicles').style.display = 'block';
             resultDiv.innerHTML = '<div class="notice notice-success">Connected — ' + d.vehicles.length + ' vehicles found. All selected by default.</div>';
         }}
-    }}).catch(function(e) {{ btn.textContent = 'Connect'; btn.disabled = false; resultDiv.innerHTML = '<div class="notice notice-error">Connection failed: ' + e + '</div>'; }});
+    }}).catch(function(e) {{ if (btn) {{ btn.textContent = 'Connect'; btn.disabled = false; }} resultDiv.innerHTML = '<div class="notice notice-error">Connection failed: ' + e + '</div>'; }});
 }}
 function evccSendToken() {{
     var checkboxes = document.querySelectorAll('#evcc-vehicle-list input[type=checkbox]:checked');
@@ -546,7 +547,7 @@ function evccRestart() {{
         else {{ resultDiv.innerHTML = '<div class="notice notice-success">Token transferred.</div><div class="notice notice-warning" style="margin-top:8px;">Could not restart evcc automatically: ' + d.error + '. Please restart evcc manually.</div>'; }}
     }}).catch(function(e) {{ resultDiv.innerHTML = '<div class="notice notice-success">Token transferred.</div><div class="notice notice-warning" style="margin-top:8px;">Could not restart evcc automatically. Please restart evcc manually.</div>'; }});
 }}
-{"// Auto-connect if evcc is configured\nwindow.addEventListener('load', function() { evccLoadVehicles(); });" if evcc_configured else ""}
+{"// Auto-connect if evcc is configured\nwindow.addEventListener('load', function() { document.getElementById('evcc-result').innerHTML = '<div class=\"notice notice-info\">Connecting to evcc...</div>'; evccLoadVehicles(); });" if evcc_configured else ""}
 </script>""")
 
     elif s == "error":
