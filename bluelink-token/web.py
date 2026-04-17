@@ -539,7 +539,8 @@ function evccTransferDone(total, errors) {{
         resultDiv.innerHTML = '<div class="notice notice-success">Token sent to ' + ok + ' vehicle(s) — restarting evcc...</div>';
         evccRestart();
     }} else if (ok > 0) {{
-        resultDiv.innerHTML = '<div class="notice notice-warning">Token sent to ' + ok + '/' + total + ' vehicle(s). Errors: ' + errors.join(', ') + '</div><button class="btn btn-secondary" style="margin-top:10px;" onclick="evccRestart()">Restart evcc</button>';
+        resultDiv.innerHTML = '<div class="notice notice-warning">Token sent to ' + ok + '/' + total + ' vehicle(s). Errors: ' + errors.join(', ') + '</div><div class="notice notice-info" style="margin-top:8px;">Restarting evcc...</div>';
+        evccRestart();
     }} else {{
         resultDiv.innerHTML = '<div class="notice notice-error">Transfer failed: ' + errors.join(', ') + '</div>';
     }}
