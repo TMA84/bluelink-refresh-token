@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.1.1
+
+### Fix
+- Browser füllt gesamten Bildschirm im noVNC (keine Fenster-Dekorationen, maximiert)
+- VNC-Frame mit `aspect-ratio: 16/10` statt fixer Höhe — keine schwarzen Balken mehr
+
 ## 3.1.0
 
 ### Neu
