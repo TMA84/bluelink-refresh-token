@@ -12,6 +12,10 @@ fi
 if bashio::config.has_value 'password'; then
     PASSWORD=$(bashio::config 'password')
 fi
+if bashio::config.has_value 'country'; then
+    COUNTRY=$(bashio::config 'country')
+    export COUNTRY
+fi
 if bashio::config.has_value 'evcc_url'; then
     EVCC_URL=$(bashio::config 'evcc_url')
 fi

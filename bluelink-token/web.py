@@ -51,9 +51,9 @@ BRAND_CONFIG = {
         "client_secret": "KUy49XxPzLpLuoK0xhBC77W6VXhmtQR9iQhmIFjjoY4IpxsV",
         "base_url": "https://idpconnect-eu.hyundai.com/auth/api/v2/user/oauth2",
         "redirect_url_final": "https://prd.eu-ccapi.hyundai.com:8080/api/v1/user/oauth2/token",
-        "login_url": "https://idpconnect-eu.hyundai.com/auth/api/v2/user/oauth2/authorize?client_id=peuhyundaiidm-ctb&redirect_uri=https%3A%2F%2Fctbapi.hyundai-europe.com%2Fapi%2Fauth&nonce=&state=NL_&scope=openid+profile+email+phone&response_type=code&connector_client_id=peuhyundaiidm-ctb&connector_scope=&connector_session_key=&country=&captcha=1&ui_locales=en-US",
+        "login_url_template": "https://idpconnect-eu.hyundai.com/auth/api/v2/user/oauth2/authorize?client_id=peuhyundaiidm-ctb&redirect_uri=https%3A%2F%2Fctbapi.hyundai-europe.com%2Fapi%2Fauth&nonce=&state={country}_&scope=openid+profile+email+phone&response_type=code&connector_client_id=peuhyundaiidm-ctb&connector_scope=&connector_session_key=&country=&captcha=1&ui_locales=en-US",
         "success_selector": "button.mail_check",
-        "code_pattern": r'^https://.*:8080/api/v1/user/oauth2/token',
+        "code_pattern": r'^https://.*:8080/api/v1/user/oauth2/(token|connector)',
     },
 }
 
@@ -264,7 +264,9 @@ def get_token_thread(brand):
         service = webdriver.ChromeService(executable_path="/usr/bin/chromedriver")
         driver = webdriver.Chrome(service=service, options=options)
         log(f"Opening {brand.title()} login page...")
-        driver.get(config["login_url"])
+        country = os.environ.get("COUNTRY", "DE").upper()
+        login_url = config.get("login_url") or config.get("login_url_template", "").format(country=country)
+        driver.get(login_url)
 
         # Auto-fill credentials if configured
         username = os.environ.get("BLUELINK_USERNAME", "")

@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.4.0
+
+### Neu
+- **Country-Code konfigurierbar** — `country` Option (Default: `DE`) für die Hyundai Login-URL
+  - Behebt "Bad Request" Fehler bei Hyundai-Nutzern (Login-Seite zeigte niederländische Seite statt der richtigen)
+
+### Fix
+- Hyundai Login-URL: `state=NL_` durch `state={country}_` ersetzt (basierend auf RustyDust Fix)
+- Hyundai Redirect-Pattern: akzeptiert jetzt auch `/connector` Pfad neben `/token`
+
 ## 3.3.0
 
 ### Neu
