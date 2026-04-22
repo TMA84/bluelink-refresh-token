@@ -63,13 +63,30 @@ The generated refresh token is valid for **180 days**. After that, simply genera
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `brand` | `auto` (show selector), `hyundai`, or `kia` | `auto` |
+| `brand` | Region and brand (see table below) | `auto` |
+| `country` | Country code for EU Hyundai (e.g. `DE`, `FR`, `PL`) | `DE` |
 | `username` | Bluelink email/username for auto-fill (optional) | |
 | `password` | Bluelink password for auto-fill (optional) | |
 | `evcc_url` | evcc instance URL, e.g. `http://192.168.1.100:7070` (optional) | |
 | `evcc_password` | evcc admin password (optional, leave empty if not set) | |
 
-When `brand` is set to `hyundai` or `kia`, the brand selector on the start page is skipped.
+### Supported Regions and Brands
+
+| Value | Region | Brand | Notes |
+|-------|--------|-------|-------|
+| `auto` | — | — | Shows selector in UI |
+| `eu_kia` | Europe | Kia | Also accepts `kia` |
+| `eu_hyundai` | Europe | Hyundai | Also accepts `hyundai`. Requires `country` |
+| `cn_kia` | China | Kia | |
+| `cn_hyundai` | China | Hyundai | |
+| `au_kia` | Australia | Kia | |
+| `au_hyundai` | Australia | Hyundai | |
+| `nz_kia` | New Zealand | Kia | |
+| `in_kia` | India | Kia | |
+| `in_hyundai` | India | Hyundai | |
+| `br_hyundai` | Brazil | Hyundai | |
+
+When `brand` is set to a specific value, the brand selector on the start page is skipped.
 
 When `evcc_url` is configured, the token is automatically transferred to evcc after generation — no manual copy-paste needed. If only one Hyundai/Kia vehicle is found in evcc, the transfer and restart happen fully automatically.
 
