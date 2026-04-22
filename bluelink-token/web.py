@@ -36,25 +36,133 @@ state = {
     "error": None, "test_result": "", "log": [], "brand_override": None,
 }
 
+_DEFAULT_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36_CCS_APP_AOS"
+
 BRAND_CONFIG = {
-    "kia": {
+    # ── Europe ──────────────────────────────────────────────
+    "eu_kia": {
         "client_id": "fdc85c00-0a2f-4c64-bcb4-2cfb1500730a",
         "client_secret": "secret",
-        "base_url": "https://idpconnect-eu.kia.com/auth/api/v2/user/oauth2",
+        "login_url": "https://idpconnect-eu.kia.com/auth/api/v2/user/oauth2/authorize?ui_locales=en&scope=openid%20profile%20email%20phone&response_type=code&client_id=peukiaidm-online-sales&redirect_uri=https://www.kia.com/api/bin/oneid/login&state=aHR0cHM6Ly93d3cua2lhLmNvbTo0NDMvZGUvP21zb2NraWQ9MjM1NDU0ODBmNmUyNjg5NDIwMmU0MDBjZjc2OTY5NWQmX3RtPTE3NTYzMTg3MjY1OTImX3RtPTE3NTYzMjQyMTcxMjY=_default",
+        "token_url": "https://idpconnect-eu.kia.com/auth/api/v2/user/oauth2/token",
         "redirect_url_final": "https://prd.eu-ccapi.kia.com:8080/api/v1/user/oauth2/redirect",
-        "login_url": "https://idpconnect-eu.kia.com/auth/api/v2/user/oauth2/authorize?ui_locales=de&scope=openid%20profile%20email%20phone&response_type=code&client_id=peukiaidm-online-sales&redirect_uri=https%3A%2F%2Fwww.kia.com%2Fapi%2Fbin%2Foneid%2Flogin&state=aHR0cHM6Ly93d3cua2lhLmNvbTo0NDMvZGUvP21zb2NraWQ9MjM1NDU0ODBmNmUyNjg5NDIwMmU0MDBjZjc2OTY5NWQmX3RtPTE3NTYzMTg3MjY1OTImX3RtPTE3NTYzMjQyMTcxMjY%3D_default",
+        "redirect_url": "https://idpconnect-eu.kia.com/auth/api/v2/user/oauth2/authorize?response_type=code&client_id=fdc85c00-0a2f-4c64-bcb4-2cfb1500730a&redirect_uri=https://prd.eu-ccapi.kia.com:8080/api/v1/user/oauth2/redirect&lang=en&state=ccsp",
         "success_selector": "a[class='logout user']",
-        "code_pattern": r'^https://.*:8080/api/v1/user/oauth2/redirect',
+        "user_agent": _DEFAULT_UA,
+        "region_name": "Europe",
+        "brand_name": "Kia",
     },
-    "hyundai": {
+    "eu_hyundai": {
         "client_id": "6d477c38-3ca4-4cf3-9557-2a1929a94654",
         "client_secret": "KUy49XxPzLpLuoK0xhBC77W6VXhmtQR9iQhmIFjjoY4IpxsV",
-        "base_url": "https://idpconnect-eu.hyundai.com/auth/api/v2/user/oauth2",
-        "redirect_url_final": "https://prd.eu-ccapi.hyundai.com:8080/api/v1/user/oauth2/token",
         "login_url_template": "https://idpconnect-eu.hyundai.com/auth/api/v2/user/oauth2/authorize?client_id=peuhyundaiidm-ctb&redirect_uri=https%3A%2F%2Fctbapi.hyundai-europe.com%2Fapi%2Fauth&nonce=&state={country}_&scope=openid+profile+email+phone&response_type=code&connector_client_id=peuhyundaiidm-ctb&connector_scope=&connector_session_key=&country=&captcha=1&ui_locales=en-US",
+        "token_url": "https://idpconnect-eu.hyundai.com/auth/api/v2/user/oauth2/token",
+        "redirect_url_final": "https://prd.eu-ccapi.hyundai.com:8080/api/v1/user/oauth2/token",
+        "redirect_url": "https://idpconnect-eu.hyundai.com/auth/api/v2/user/oauth2/authorize?response_type=code&client_id=6d477c38-3ca4-4cf3-9557-2a1929a94654&redirect_uri=https://prd.eu-ccapi.hyundai.com:8080/api/v1/user/oauth2/token&lang=en&state=ccsp",
         "success_selector": "button.mail_check",
-        "code_pattern": r'^https://.*:8080/api/v1/user/oauth2/(token|connector)',
+        "user_agent": _DEFAULT_UA,
+        "region_name": "Europe",
+        "brand_name": "Hyundai",
     },
+    # ── China ───────────────────────────────────────────────
+    "cn_kia": {
+        "client_id": "9d5df92a-06ae-435f-b459-8304f2efcc67",
+        "client_secret": "tsXdkUg08Av2ZZzXOgWzJyxUT6yeSnNNQkXXPRdKWEANwl1p",
+        "login_url": "https://prd.cn-ccapi.kia.com/api/v1/user/oauth2/authorize?response_type=code&client_id=9d5df92a-06ae-435f-b459-8304f2efcc67&redirect_uri=https://prd.cn-ccapi.kia.com:443/api/v1/user/oauth2/redirect",
+        "token_url": "https://prd.cn-ccapi.kia.com/api/v1/user/oauth2/token",
+        "redirect_url_final": "https://prd.cn-ccapi.kia.com:443/api/v1/user/oauth2/redirect",
+        "success_selector": None,
+        "user_agent": _DEFAULT_UA,
+        "region_name": "China",
+        "brand_name": "Kia",
+    },
+    "cn_hyundai": {
+        "client_id": "72b3d019-5bc7-443d-a437-08f307cf06e2",
+        "client_secret": "secret",
+        "login_url": "https://prd.cn-ccapi.hyundai.com/api/v1/user/oauth2/authorize?response_type=code&client_id=72b3d019-5bc7-443d-a437-08f307cf06e2&redirect_uri=https://prd.cn-ccapi.hyundai.com:443/api/v1/user/oauth2/redirect",
+        "token_url": "https://prd.cn-ccapi.hyundai.com/api/v1/user/oauth2/token",
+        "redirect_url_final": "https://prd.cn-ccapi.hyundai.com:443/api/v1/user/oauth2/redirect",
+        "success_selector": None,
+        "user_agent": _DEFAULT_UA,
+        "region_name": "China",
+        "brand_name": "Hyundai",
+    },
+    # ── Australia ───────────────────────────────────────────
+    "au_kia": {
+        "client_id": "8acb778a-b918-4a8d-8624-73a0beb64289",
+        "client_secret": "7ScMMm6fEYXdiEPCxaPaQmgeYdlUrfwoh4AfXGOzYIS2Cu9T",
+        "login_url": "https://au-apigw.ccs.kia.com.au:8082/api/v1/user/oauth2/authorize?response_type=code&client_id=8acb778a-b918-4a8d-8624-73a0beb64289&redirect_uri=https://au-apigw.ccs.kia.com.au:8082/api/v1/user/oauth2/redirect",
+        "token_url": "https://au-apigw.ccs.kia.com.au:8082/api/v1/user/oauth2/token",
+        "redirect_url_final": "https://au-apigw.ccs.kia.com.au:8082/api/v1/user/oauth2/redirect",
+        "success_selector": None,
+        "user_agent": _DEFAULT_UA,
+        "region_name": "Australia",
+        "brand_name": "Kia",
+    },
+    "au_hyundai": {
+        "client_id": "855c72df-dfd7-4230-ab03-67cbf902bb1c",
+        "client_secret": "e6fbwHM32YNbhQl0pviaPp3rf4t3S6k91eceA3MJLdbdThCO",
+        "login_url": "https://au-apigw.ccs.hyundai.com.au:8080/api/v1/user/oauth2/authorize?response_type=code&client_id=855c72df-dfd7-4230-ab03-67cbf902bb1c&redirect_uri=https://au-apigw.ccs.hyundai.com.au:8080/api/v1/user/oauth2/redirect",
+        "token_url": "https://au-apigw.ccs.hyundai.com.au:8080/api/v1/user/oauth2/token",
+        "redirect_url_final": "https://au-apigw.ccs.hyundai.com.au:8080/api/v1/user/oauth2/redirect",
+        "success_selector": None,
+        "user_agent": _DEFAULT_UA,
+        "region_name": "Australia",
+        "brand_name": "Hyundai",
+    },
+    # ── New Zealand ─────────────────────────────────────────
+    "nz_kia": {
+        "client_id": "4ab606a7-cea4-48a0-a216-ed9c14a4a38c",
+        "client_secret": "0haFqXTkKktNKfzkxhZ0aku31i74g0yQFm5od2mz4LdI5mLY",
+        "login_url": "https://au-apigw.ccs.kia.com.au:8082/api/v1/user/oauth2/authorize?response_type=code&client_id=4ab606a7-cea4-48a0-a216-ed9c14a4a38c&redirect_uri=https://au-apigw.ccs.kia.com.au:8082/api/v1/user/oauth2/redirect",
+        "token_url": "https://au-apigw.ccs.kia.com.au:8082/api/v1/user/oauth2/token",
+        "redirect_url_final": "https://au-apigw.ccs.kia.com.au:8082/api/v1/user/oauth2/redirect",
+        "success_selector": None,
+        "user_agent": _DEFAULT_UA,
+        "region_name": "New Zealand",
+        "brand_name": "Kia",
+    },
+    # ── India ───────────────────────────────────────────────
+    "in_kia": {
+        "client_id": "d0fe4855-7527-4be0-ab6e-a481216c705d",
+        "client_secret": "SHoTtXpyfbYmP3XjNA6BrtlDglypPWj920PtKBJPfleHEYpU",
+        "login_url": "https://prd.in-ccapi.kia.connected-car.io:8080/api/v1/user/oauth2/authorize?response_type=code&client_id=d0fe4855-7527-4be0-ab6e-a481216c705d&redirect_uri=https://prd.in-ccapi.kia.connected-car.io:8080/api/v1/user/oauth2/redirect",
+        "token_url": "https://prd.in-ccapi.kia.connected-car.io:8080/api/v1/user/oauth2/token",
+        "redirect_url_final": "https://prd.in-ccapi.kia.connected-car.io:8080/api/v1/user/oauth2/redirect",
+        "success_selector": None,
+        "user_agent": _DEFAULT_UA,
+        "region_name": "India",
+        "brand_name": "Kia",
+    },
+    "in_hyundai": {
+        "client_id": "e5b3f6d0-7f83-43c9-aff3-a254db7af368",
+        "client_secret": "5JFOCr6C24OfOzlDqZp7EwqrkL0Ww04UaxcDiE6Ud3qI5SE4",
+        "login_url": "https://prd.in-ccapi.hyundai.connected-car.io:8080/api/v1/user/oauth2/authorize?response_type=code&client_id=e5b3f6d0-7f83-43c9-aff3-a254db7af368&redirect_uri=https://prd.in-ccapi.hyundai.connected-car.io:8080/api/v1/user/oauth2/redirect",
+        "token_url": "https://prd.in-ccapi.hyundai.connected-car.io:8080/api/v1/user/oauth2/token",
+        "redirect_url_final": "https://prd.in-ccapi.hyundai.connected-car.io:8080/api/v1/user/oauth2/redirect",
+        "success_selector": None,
+        "user_agent": _DEFAULT_UA,
+        "region_name": "India",
+        "brand_name": "Hyundai",
+    },
+    # ── Brazil ──────────────────────────────────────────────
+    "br_hyundai": {
+        "client_id": "03f7df9b-7626-4853-b7bd-ad1e8d722bd5",
+        "client_secret": "yQz2bc6Cn8OovVOR7RDWwxTqVwWG3yKBYFDg0HsOXsyxyPlH",
+        "login_url": "https://br-ccapi.hyundai.com.br/api/v1/user/oauth2/authorize?response_type=code&client_id=03f7df9b-7626-4853-b7bd-ad1e8d722bd5&redirect_uri=https://br-ccapi.hyundai.com.br/api/v1/user/oauth2/redirect",
+        "token_url": "https://br-ccapi.hyundai.com.br/api/v1/user/oauth2/token",
+        "redirect_url_final": "https://br-ccapi.hyundai.com.br/api/v1/user/oauth2/redirect",
+        "success_selector": None,
+        "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_4_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
+        "region_name": "Brazil",
+        "brand_name": "Hyundai",
+    },
+}
+
+# Legacy aliases
+BRAND_ALIASES = {
+    "kia": "eu_kia",
+    "hyundai": "eu_hyundai",
 }
 
 STYLE = """
@@ -167,6 +275,8 @@ function sendClipboard() {
 
 def render(content):
     brand = get_brand()
+    config = BRAND_CONFIG[brand]
+    brand_label = f"{config['region_name']} {config['brand_name']}"
     return f"""<!DOCTYPE html>
 <html lang="de"><head>
 <title>Bluelink Token Generator</title>
@@ -175,7 +285,7 @@ def render(content):
 <style>{STYLE}</style></head><body>
 <div class="header"><div class="header-inner">
 <h1>Bluelink Token Generator</h1>
-<span class="brand">{brand}</span>
+<span class="brand">{brand_label}</span>
 </div></div>
 <div class="container">{content}</div>
 <div style="text-align:center;padding:16px;color:var(--text-secondary);font-size:12px;">
@@ -186,10 +296,13 @@ def get_brand():
     override = state.get("brand_override")
     if override and override in BRAND_CONFIG:
         return override
-    brand = os.environ.get("BRAND", "hyundai").lower()
+    brand = os.environ.get("BRAND", "auto").lower()
+    # Resolve legacy aliases
+    brand = BRAND_ALIASES.get(brand, brand)
     if brand in BRAND_CONFIG:
         return brand
-    return "hyundai"
+    # "auto" or unknown → default to eu_hyundai
+    return "eu_hyundai"
 
 def log(msg, level="info"):
     state["log"].append((level, msg))
@@ -241,10 +354,6 @@ def update_ha_sensor(brand):
 
 def get_token_thread(brand):
     config = BRAND_CONFIG[brand]
-    base_url = config["base_url"]
-    token_url = f"{base_url}/token"
-    redirect_url = (f"{base_url}/authorize?response_type=code&client_id={config['client_id']}"
-                    f"&redirect_uri={config['redirect_url_final']}&lang=de&state=ccsp")
     driver = None
     try:
         state["status"] = "waiting_login"
@@ -257,15 +366,13 @@ def get_token_thread(brand):
         options.add_argument("--disable-gpu")
         options.add_argument("--window-size=1280,800")
         options.add_argument("--start-maximized")
-        options.add_argument(
-            "user-agent=Mozilla/5.0 (Linux; Android 4.1.1; Galaxy Nexus "
-            "Build/JRO03C) AppleWebKit/535.19 (KHTML, like Gecko) "
-            "Chrome/18.0.1025.166 Mobile Safari/535.19_CCS_APP_AOS")
+        options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_argument(f"user-agent={config['user_agent']}")
         service = webdriver.ChromeService(executable_path="/usr/bin/chromedriver")
         driver = webdriver.Chrome(service=service, options=options)
-        log(f"Opening {brand.title()} login page...")
+        log(f"Opening {config['region_name']} {config['brand_name']} login page...")
         country = os.environ.get("COUNTRY", "DE").upper()
-        login_url = config.get("login_url") or config.get("login_url_template", "").format(country=country)
+        login_url = config.get("login_url_template", "").format(country=country) if "login_url_template" in config else config["login_url"]
         driver.get(login_url)
 
         # Auto-fill credentials if configured
@@ -296,27 +403,32 @@ def get_token_thread(brand):
         else:
             log("Waiting for login — please sign in using the browser below.", "warn")
         wait = WebDriverWait(driver, 300)
-        if brand == "kia":
-            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, config["success_selector"])))
-        else:
+        if config.get("success_selector"):
             wait.until(EC.any_of(
                 EC.presence_of_element_located((By.CSS_SELECTOR, config["success_selector"])),
-                EC.presence_of_element_located((By.CSS_SELECTOR, "button.ctb_button"))))
+                EC.url_contains("code=")))
+        else:
+            wait.until(EC.url_contains("code="))
         log("Login successful.", "ok")
         state["status"] = "processing"
         log("Retrieving authorization code...")
-        driver.get(redirect_url)
-        time.sleep(3)
-        current_url = ""
-        for i in range(15):
-            current_url = driver.current_url
-            log(f"Waiting for redirect ({i+1}/15)...")
-            if re.match(config["code_pattern"], current_url): break
-            time.sleep(1)
-        code_match = re.search(r'code=([0-9a-fA-F-]{36}\.[0-9a-fA-F-]{36}\.[0-9a-fA-F-]{36})', current_url)
-        if not code_match:
+
+        # If config has a separate redirect_url, navigate to it and wait for code
+        if config.get("redirect_url"):
+            driver.get(config["redirect_url"])
+            WebDriverWait(driver, 30).until(
+                lambda d: "code=" in d.current_url or "error=" in d.current_url)
+
+        current_url = driver.current_url
+        if "code=" not in current_url:
             state["status"] = "error"
             state["error"] = f"No auth code found in URL: {current_url[:120]}"
+            log(state["error"], "err")
+            return
+        code_match = re.search(r"[?&]code=([^&]+)", current_url)
+        if not code_match:
+            state["status"] = "error"
+            state["error"] = f"Could not extract auth code from URL: {current_url[:120]}"
             log(state["error"], "err")
             return
         log("Authorization code received.", "ok")
@@ -324,7 +436,7 @@ def get_token_thread(brand):
         data = {"grant_type": "authorization_code", "code": code_match.group(1),
                 "redirect_uri": config["redirect_url_final"],
                 "client_id": config["client_id"], "client_secret": config["client_secret"]}
-        response = req_lib.post(token_url, data=data, timeout=15)
+        response = req_lib.post(config["token_url"], data=data, timeout=15)
         if response.status_code == 200:
             tokens = response.json()
             state["refresh_token"] = tokens.get("refresh_token", "N/A")
@@ -355,7 +467,8 @@ def get_token_thread(brand):
 @app.route("/")
 def index():
     brand = get_brand()
-    bt = brand.title()
+    config = BRAND_CONFIG[brand]
+    bt = f"{config['region_name']} {config['brand_name']}"
     s = state["status"]
 
     if s == "idle":
@@ -365,21 +478,31 @@ def index():
                       "No credentials configured. You will need to enter them manually in the browser. "
                       "Tip: Set username and password in the addon configuration for auto-fill.")
         default_brand = os.environ.get("BRAND", "auto").lower()
-        brand_fixed = default_brand in ("hyundai", "kia")
-        kia_sel = "selected" if default_brand == "kia" else ""
-        hyu_sel = "selected" if default_brand != "kia" else ""
+        default_brand = BRAND_ALIASES.get(default_brand, default_brand)
+        brand_fixed = default_brand in BRAND_CONFIG
         if brand_fixed:
             brand_html = f'<input type="hidden" name="brand" value="{default_brand}">'
         else:
+            # Build grouped options from BRAND_CONFIG
+            regions = {}
+            for key, cfg in BRAND_CONFIG.items():
+                rn = cfg["region_name"]
+                regions.setdefault(rn, []).append((key, cfg["brand_name"]))
+            options_html = ""
+            for region, entries in regions.items():
+                options_html += f'<optgroup label="{region}">'
+                for key, bname in entries:
+                    sel = "selected" if key == brand else ""
+                    options_html += f'<option value="{key}" {sel}>{bname}</option>'
+                options_html += "</optgroup>"
             brand_html = f"""
         <div style="margin-bottom: 16px;">
-            <label for="brand-select" class="section-label">Brand</label>
+            <label for="brand-select" class="section-label">Region &amp; Brand</label>
             <select id="brand-select" name="brand" style="
                 padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px;
                 font-size: 14px; font-family: inherit; background: var(--surface);
                 cursor: pointer; min-width: 200px;">
-                <option value="hyundai" {hyu_sel}>Hyundai</option>
-                <option value="kia" {kia_sel}>Kia</option>
+                {options_html}
             </select>
         </div>"""
         return render(f"""
@@ -637,6 +760,7 @@ function evccReset() {{
 @app.route("/start", methods=["POST"])
 def start():
     chosen_brand = request.form.get("brand", "").lower()
+    chosen_brand = BRAND_ALIASES.get(chosen_brand, chosen_brand)
     if chosen_brand in BRAND_CONFIG:
         state["brand_override"] = chosen_brand
     else:
@@ -672,11 +796,10 @@ def test_token():
         state["test_result"] = "No refresh token available."
         return flask_redirect("/")
     # The most reliable test: use the refresh token to get a new access token
-    token_url = f"{config['base_url']}/token"
     try:
         data = {"grant_type": "refresh_token", "refresh_token": refresh_token,
                 "client_id": config["client_id"], "client_secret": config["client_secret"]}
-        response = req_lib.post(token_url, data=data, timeout=10)
+        response = req_lib.post(config["token_url"], data=data, timeout=10)
         if response.status_code == 200:
             new_tokens = response.json()
             if new_tokens.get("access_token"):

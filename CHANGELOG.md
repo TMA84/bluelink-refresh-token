@@ -1,5 +1,22 @@
 # Changelog
 
+## 4.0.0
+
+### Neu
+- **Multi-Region Support** — Europa, China, Australien, Neuseeland, Indien, Brasilien
+  - 12 Region/Brand-Kombinationen (eu_kia, eu_hyundai, cn_kia, cn_hyundai, au_kia, au_hyundai, nz_kia, in_kia, in_hyundai, br_hyundai)
+  - Gruppierte Dropdown-Auswahl nach Region
+  - Legacy-Aliase: `kia` → `eu_kia`, `hyundai` → `eu_hyundai`
+- **Anti-Detection** — `--disable-blink-features=AutomationControlled` verhindert Selenium-Erkennung
+- **Robustere Code-Erkennung** — `code=` in URL statt spezifischer Pfad-Patterns
+- **Flexiblerer Code-Regex** — `[?&]code=([^&]+)` statt UUID-spezifisches Pattern
+- **Konfigurierbarer User-Agent** — pro Region/Brand (z.B. iOS UA für Brasilien)
+- **Separate Redirect-URL** — EU-Brands nutzen einen separaten Authorize-Redirect nach Login
+
+### Fix
+- Hyundai "Bad Request" nach Login behoben (robusterer Redirect-Flow)
+- Non-EU Regionen ohne success_selector werden unterstützt (warten auf `code=` in URL)
+
 ## 3.4.0
 
 ### Neu
