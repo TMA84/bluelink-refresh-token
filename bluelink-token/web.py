@@ -37,6 +37,7 @@ state = {
 }
 
 _DEFAULT_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36_CCS_APP_AOS"
+_MOBILE_UA = "Mozilla/5.0 (Linux; Android 4.1.1; Galaxy Nexus Build/JRO03C) AppleWebKit/535.19 (KHTML, like Gecko) Chrome/18.0.1025.166 Mobile Safari/535.19_CCS_APP_AOS"
 
 BRAND_CONFIG = {
     # ── Europe ──────────────────────────────────────────────
@@ -48,7 +49,7 @@ BRAND_CONFIG = {
         "redirect_url_final": "https://prd.eu-ccapi.kia.com:8080/api/v1/user/oauth2/redirect",
         "redirect_url": "https://idpconnect-eu.kia.com/auth/api/v2/user/oauth2/authorize?response_type=code&client_id=fdc85c00-0a2f-4c64-bcb4-2cfb1500730a&redirect_uri=https://prd.eu-ccapi.kia.com:8080/api/v1/user/oauth2/redirect&lang=en&state=ccsp",
         "success_selector": "a[class='logout user']",
-        "user_agent": _DEFAULT_UA,
+        "user_agent": _MOBILE_UA,
         "region_name": "Europe",
         "brand_name": "Kia",
     },
@@ -60,7 +61,7 @@ BRAND_CONFIG = {
         "redirect_url_final": "https://prd.eu-ccapi.hyundai.com:8080/api/v1/user/oauth2/token",
         "redirect_url": "https://idpconnect-eu.hyundai.com/auth/api/v2/user/oauth2/authorize?response_type=code&client_id=6d477c38-3ca4-4cf3-9557-2a1929a94654&redirect_uri=https://prd.eu-ccapi.hyundai.com:8080/api/v1/user/oauth2/token&lang=en&state=ccsp",
         "success_selector": "button.mail_check",
-        "user_agent": _DEFAULT_UA,
+        "user_agent": _MOBILE_UA,
         "region_name": "Europe",
         "brand_name": "Hyundai",
     },
@@ -420,6 +421,13 @@ def get_token_thread(brand):
                 lambda d: "code=" in d.current_url or "error=" in d.current_url)
 
         current_url = driver.current_url
+        if "error=" in current_url and "code=" not in current_url:
+            error_match = re.search(r"error_description=([^&]+)", current_url)
+            error_desc = error_match.group(1).replace("+", " ") if error_match else "Unknown OAuth error"
+            state["status"] = "error"
+            state["error"] = f"OAuth error: {error_desc}"
+            log(state["error"], "err")
+            return
         if "code=" not in current_url:
             state["status"] = "error"
             state["error"] = f"No auth code found in URL: {current_url[:120]}"
