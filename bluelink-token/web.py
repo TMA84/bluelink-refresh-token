@@ -368,9 +368,15 @@ def get_token_thread(brand):
         options.add_argument("--window-size=1280,800")
         options.add_argument("--start-maximized")
         options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option("useAutomationExtension", False)
         options.add_argument(f"user-agent={config['user_agent']}")
         service = webdriver.ChromeService(executable_path="/usr/bin/chromedriver")
         driver = webdriver.Chrome(service=service, options=options)
+        # Remove webdriver flag from navigator
+        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+            "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+        })
         log(f"Opening {config['region_name']} {config['brand_name']} login page...")
         country = os.environ.get("COUNTRY", "DE").upper()
         login_url = config.get("login_url_template", "").format(country=country) if "login_url_template" in config else config["login_url"]
