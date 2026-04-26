@@ -369,6 +369,25 @@ def get_token_thread(brand):
     try:
         state["status"] = "waiting_login"
         state["log"] = []
+
+        # ── Try headless login first (no browser needed) ──
+        username = os.environ.get("BLUELINK_USERNAME", "")
+        password = os.environ.get("BLUELINK_PASSWORD", "")
+        if HAS_CURL_CFFI and username and password and brand in ("eu_kia", "eu_hyundai"):
+            log("Trying headless login (no browser needed)...")
+            try:
+                result = _headless_login_eu(username, password, config)
+                if result.get("ok"):
+                    log("Headless login successful — no browser needed!", "ok")
+                    return  # Done! No browser needed.
+                else:
+                    log(f"Headless login failed: {result.get('error', 'unknown')}", "warn")
+                    log("Falling back to browser login...", "warn")
+            except Exception as e:
+                log(f"Headless login error: {e}", "warn")
+                log("Falling back to browser login...", "warn")
+
+        # ── Fallback: Browser-based login ──
         log("Starting browser...")
         options = webdriver.ChromeOptions()
         options.binary_location = "/usr/bin/chromium-browser"
