@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Bluelink Token Generator - Web Application with Selenium + noVNC"""
 
-import os, re, time, threading, subprocess
+import os, re, time, threading, subprocess, json, base64
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlparse, parse_qs
 import requests as req_lib
 from flask import Flask, request, jsonify, redirect as flask_redirect
 from selenium import webdriver
@@ -11,6 +12,15 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 import html as html_lib
+
+# curl_cffi for headless login (TLS fingerprint impersonation)
+try:
+    from curl_cffi import requests as curl_requests
+    from Crypto.PublicKey import RSA
+    from Crypto.Cipher import PKCS1_v1_5
+    HAS_CURL_CFFI = True
+except ImportError:
+    HAS_CURL_CFFI = False
 
 app = Flask(__name__)
 
@@ -884,49 +894,148 @@ def api_autologin():
     click_login = data.get("click_login", False)
     if not username or not password:
         return jsonify({"ok": False, "error": "Username and password required"})
+
+    # Try headless login first (no browser needed)
+    if HAS_CURL_CFFI and click_login:
+        brand = get_brand()
+        config = BRAND_CONFIG[brand]
+        # Only EU Kia/Hyundai support headless login for now
+        if brand in ("eu_kia", "eu_hyundai"):
+            try:
+                result = _headless_login_eu(username, password, config)
+                if result.get("ok"):
+                    return jsonify(result)
+                else:
+                    log(f"Headless login failed: {result.get('error', 'unknown')}, falling back to browser.", "warn")
+            except Exception as e:
+                log(f"Headless login error: {e}, falling back to browser.", "warn")
+
+    # Fallback: xdotool browser fill
     xenv = {**os.environ, "DISPLAY": ":99"}
     try:
-        # Find and click the email/username field
-        # Use xdotool to search for the input field by tab-navigating
-        # First, click somewhere in the browser to focus it
         subprocess.run(["xdotool", "key", "--clearmodifiers", "Escape"], env=xenv, timeout=5)
         time.sleep(0.3)
-
-        # Tab to first input field (email) — press Tab a few times from the top
-        # More reliable: use Ctrl+L to focus address bar, then Tab into page
         subprocess.run(["xdotool", "key", "--clearmodifiers", "F6"], env=xenv, timeout=5)
         time.sleep(0.2)
-        # Tab into the page content
         for _ in range(3):
             subprocess.run(["xdotool", "key", "--clearmodifiers", "Tab"], env=xenv, timeout=5)
             time.sleep(0.1)
-
-        # Select all + type username
         subprocess.run(["xdotool", "key", "--clearmodifiers", "ctrl+a"], env=xenv, timeout=5)
         time.sleep(0.1)
         subprocess.run(["xdotool", "type", "--clearmodifiers", "--delay", "12", username],
                        env=xenv, timeout=10)
         time.sleep(0.3)
-
-        # Tab to password field
         subprocess.run(["xdotool", "key", "--clearmodifiers", "Tab"], env=xenv, timeout=5)
         time.sleep(0.2)
-
-        # Type password
         subprocess.run(["xdotool", "type", "--clearmodifiers", "--delay", "12", password],
                        env=xenv, timeout=10)
         time.sleep(0.3)
-
         msg = "Credentials filled."
-
         if click_login:
-            # Press Enter to submit the form
             subprocess.run(["xdotool", "key", "--clearmodifiers", "Return"], env=xenv, timeout=5)
             msg = "Credentials filled and login submitted."
-
         return jsonify({"ok": True, "message": msg})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
+
+
+def _headless_login_eu(username, password, config):
+    """
+    Headless EU Kia/Hyundai login using curl_cffi (Android TLS fingerprint).
+    No browser needed — pure HTTP requests.
+
+    Flow:
+      1. GET authorize page (get cookies)
+      2. GET /auth/api/v1/accounts/certs (RSA public key)
+      3. POST /auth/account/signin with encrypted password + app client_id
+         → 302 redirect with code directly
+      4. POST token exchange → refresh + access token
+    """
+    # Derive host from token_url
+    from urllib.parse import urlparse as _urlparse
+    host = f"{_urlparse(config['token_url']).scheme}://{_urlparse(config['token_url']).netloc}"
+    client_id = config["client_id"]
+    redirect_uri = config["redirect_url_final"]
+
+    log("Headless login: starting (curl_cffi, Android TLS fingerprint)...", "ok")
+
+    s = curl_requests.Session(impersonate="chrome131_android")
+    s.headers.update({"User-Agent": config["user_agent"]})
+
+    # Step 1: Load authorize page to get session cookies
+    log("Headless: loading authorize page...")
+    auth_url = (f"{host}/auth/api/v2/user/oauth2/authorize"
+                f"?response_type=code&client_id={client_id}"
+                f"&redirect_uri={redirect_uri}&lang=de&state=ccsp&country=de")
+    s.get(auth_url, allow_redirects=True)
+
+    # Step 2: Get RSA public key for password encryption
+    log("Headless: fetching RSA public key...")
+    resp = s.get(f"{host}/auth/api/v1/accounts/certs")
+    if resp.status_code != 200:
+        return {"ok": False, "error": f"Certs endpoint returned {resp.status_code}"}
+    jwk = resp.json().get("retValue", {})
+    kid = jwk.get("kid", "")
+
+    # Convert JWK to RSA key
+    n_bytes = base64.urlsafe_b64decode(jwk["n"] + "==")
+    e_bytes = base64.urlsafe_b64decode(jwk["e"] + "==")
+    n = int.from_bytes(n_bytes, "big")
+    e = int.from_bytes(e_bytes, "big")
+    key = RSA.construct((n, e))
+    cipher = PKCS1_v1_5.new(key)
+    encrypted_pw = cipher.encrypt(password.encode("utf-8")).hex()
+
+    # Step 3: POST signin with app client_id → code comes directly in redirect
+    log("Headless: signing in...")
+    resp = s.post(f"{host}/auth/account/signin", data={
+        "client_id": client_id,
+        "encryptedPassword": "true",
+        "password": encrypted_pw,
+        "redirect_uri": redirect_uri,
+        "scope": "",
+        "nonce": "",
+        "state": "ccsp",
+        "username": username,
+        "connector_session_key": "",
+        "kid": kid,
+        "_csrf": "",
+    }, allow_redirects=False)
+
+    if resp.status_code != 302:
+        return {"ok": False, "error": f"Signin returned HTTP {resp.status_code}: {resp.text[:200]}"}
+
+    location = resp.headers.get("location", "")
+    code_list = parse_qs(urlparse(location).query).get("code")
+    if not code_list:
+        if "error" in location:
+            return {"ok": False, "error": f"Signin error: {location[:200]}"}
+        return {"ok": False, "error": f"No code in redirect: {location[:200]}"}
+
+    code = code_list[0]
+    log(f"Headless: authorization code received.", "ok")
+
+    # Step 4: Token exchange
+    log("Headless: exchanging code for tokens...")
+    resp = curl_requests.post(config["token_url"], data={
+        "grant_type": "authorization_code",
+        "code": code,
+        "redirect_uri": redirect_uri,
+        "client_id": client_id,
+        "client_secret": config["client_secret"],
+    })
+
+    if resp.status_code != 200:
+        return {"ok": False, "error": f"Token exchange failed: HTTP {resp.status_code}: {resp.text[:200]}"}
+
+    tokens = resp.json()
+    state["refresh_token"] = tokens.get("refresh_token", "N/A")
+    state["access_token"] = tokens.get("access_token", "N/A")
+    state["status"] = "success"
+    log("Token generated successfully via headless login!", "ok")
+    update_ha_sensor(get_brand())
+
+    return {"ok": True, "message": "Login successful — tokens generated!"}
 
 @app.route("/api/status")
 def api_status():

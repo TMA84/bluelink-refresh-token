@@ -30,7 +30,7 @@ RUN apk add --no-cache \
 # Create virtual environment and install dependencies
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:${PATH}"
-RUN pip3 install --no-cache-dir selenium requests flask gunicorn
+RUN pip3 install --no-cache-dir selenium requests flask gunicorn curl_cffi pycryptodome
 
 # Copy addon files
 WORKDIR /app
