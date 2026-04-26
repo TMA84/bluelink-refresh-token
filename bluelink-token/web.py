@@ -1203,5 +1203,46 @@ def evcc_restart():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
 
+def _auto_start_login():
+    """Auto-start headless login if credentials are configured via env vars."""
+    username = os.environ.get("BLUELINK_USERNAME", "")
+    password = os.environ.get("BLUELINK_PASSWORD", "")
+    brand_env = os.environ.get("BRAND", "auto").lower()
+    brand_env = BRAND_ALIASES.get(brand_env, brand_env)
+
+    if not username or not password:
+        return
+    if not HAS_CURL_CFFI:
+        return
+    if brand_env not in ("eu_kia", "eu_hyundai") and brand_env != "auto":
+        return
+
+    # Resolve brand
+    brand = brand_env if brand_env in BRAND_CONFIG else "eu_kia"
+    config = BRAND_CONFIG[brand]
+
+    if brand not in ("eu_kia", "eu_hyundai"):
+        return
+
+    print(f"[AUTO] Credentials configured — starting headless login for {brand}...")
+    state["status"] = "waiting_login"
+    state["log"] = []
+    log("Auto-start: credentials found, trying headless login...")
+
+    try:
+        result = _headless_login_eu(username, password, config)
+        if result.get("ok"):
+            log("Auto-start: login successful!", "ok")
+        else:
+            log(f"Auto-start: headless login failed: {result.get('error', 'unknown')}", "warn")
+            log("Open the web UI to try again or use the browser fallback.", "warn")
+            state["status"] = "idle"
+    except Exception as e:
+        log(f"Auto-start: error: {e}", "warn")
+        state["status"] = "idle"
+
+# Auto-start on import (when gunicorn loads the app)
+threading.Thread(target=_auto_start_login, daemon=True).start()
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=9876)
