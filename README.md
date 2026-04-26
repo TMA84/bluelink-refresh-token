@@ -125,7 +125,7 @@ If `EVCC_URL` is configured, the token is automatically transferred to evcc afte
 | `brand` | Region and brand (see table below) | `auto` |
 | `country` | Country code for EU Hyundai (e.g. `DE`, `FR`, `PL`) | `DE` |
 | `username` | Bluelink email/username | |
-| `password` | Bluelink password | |
+| `password` | Bluelink password (8-20 characters) | |
 | `evcc_url` | evcc instance URL (optional) | |
 | `evcc_password` | evcc admin password (optional) | |
 
@@ -137,6 +137,8 @@ If `EVCC_URL` is configured, the token is automatically transferred to evcc afte
 | `eu_hyundai` | Hyundai (Europe) | ✅ |
 
 Legacy values `kia` and `hyundai` are aliases for `eu_kia` and `eu_hyundai`.
+
+> **Password requirements:** Your Bluelink password must be 8–20 characters and contain at least one uppercase letter, one lowercase letter, one digit, and one special character. This is enforced by Kia/Hyundai — passwords outside these rules will be silently rejected.
 
 ### Environment Variables (Docker/Podman)
 
