@@ -304,6 +304,7 @@ def index():
         <button type="submit" class="btn btn-primary" id="ql-btn">Generate Token</button>
     </form>
     <div id="ql-result" style="margin-top:12px;"></div>
+    <div id="ql-log" style="margin-top:12px;">{('<details open><summary>Log</summary><div class="log">' + format_log() + '</div></details>') if state.get('log') else ''}</div>
 </div>
 <script>
 document.getElementById('login-form').addEventListener('submit', function(e) {{
@@ -323,12 +324,10 @@ document.getElementById('login-form').addEventListener('submit', function(e) {{
         if (d.ok) {{
             location.reload();
         }} else {{
-            btn.disabled = false; btn.textContent = 'Generate Token';
-            res.innerHTML = '<div class="notice notice-error">' + d.error + '</div>';
+            location.reload();
         }}
     }}).catch(function() {{
-        btn.disabled = false; btn.textContent = 'Generate Token';
-        res.innerHTML = '<div class="notice notice-error">Request failed</div>';
+        location.reload();
     }});
 }});
 </script>""")
@@ -616,10 +615,15 @@ def api_quicklogin():
         if result.get("ok"):
             return jsonify({"ok": True})
         else:
+            err = result.get("error", "Login failed")
             state["status"] = "idle"
-            return jsonify({"ok": False, "error": result.get("error", "Login failed")})
+            state["error"] = err
+            log(err, "err")
+            return jsonify({"ok": False, "error": err})
     except Exception as e:
         state["status"] = "idle"
+        state["error"] = str(e)
+        log(str(e), "err")
         return jsonify({"ok": False, "error": str(e)})
 
 def _headless_login_eu(username, password, config):
@@ -672,7 +676,7 @@ def _headless_login_eu(username, password, config):
     encrypted_pw = cipher.encrypt(password.encode("utf-8")).hex()
 
     # Step 3: POST signin with app client_id → code comes directly in redirect
-    log(f"Headless: signing in as {username[:3]}***@{username.split('@')[-1] if '@' in username else '***'}...")
+    log(f"Headless: signing in as {username[:3]}***@{username.split('@')[-1] if '@' in username else '***'} (password length: {len(password)})...")
     resp = s.post(f"{host}/auth/account/signin", data={
         "client_id": client_id,
         "encryptedPassword": "true",
