@@ -86,6 +86,7 @@ BRAND_CONFIG = {
         "user_agent": _DEFAULT_UA,
         "region_name": "China",
         "brand_name": "Kia",
+        "hidden": True,
     },
     "cn_hyundai": {
         "client_id": "72b3d019-5bc7-443d-a437-08f307cf06e2",
@@ -97,6 +98,7 @@ BRAND_CONFIG = {
         "user_agent": _DEFAULT_UA,
         "region_name": "China",
         "brand_name": "Hyundai",
+        "hidden": True,
     },
     # ── Australia ───────────────────────────────────────────
     "au_kia": {
@@ -109,6 +111,7 @@ BRAND_CONFIG = {
         "user_agent": _DEFAULT_UA,
         "region_name": "Australia",
         "brand_name": "Kia",
+        "hidden": True,
     },
     "au_hyundai": {
         "client_id": "855c72df-dfd7-4230-ab03-67cbf902bb1c",
@@ -120,6 +123,7 @@ BRAND_CONFIG = {
         "user_agent": _DEFAULT_UA,
         "region_name": "Australia",
         "brand_name": "Hyundai",
+        "hidden": True,
     },
     # ── New Zealand ─────────────────────────────────────────
     "nz_kia": {
@@ -132,6 +136,7 @@ BRAND_CONFIG = {
         "user_agent": _DEFAULT_UA,
         "region_name": "New Zealand",
         "brand_name": "Kia",
+        "hidden": True,
     },
     # ── India ───────────────────────────────────────────────
     "in_kia": {
@@ -144,6 +149,7 @@ BRAND_CONFIG = {
         "user_agent": _DEFAULT_UA,
         "region_name": "India",
         "brand_name": "Kia",
+        "hidden": True,
     },
     "in_hyundai": {
         "client_id": "e5b3f6d0-7f83-43c9-aff3-a254db7af368",
@@ -155,6 +161,7 @@ BRAND_CONFIG = {
         "user_agent": _DEFAULT_UA,
         "region_name": "India",
         "brand_name": "Hyundai",
+        "hidden": True,
     },
     # ── Brazil ──────────────────────────────────────────────
     "br_hyundai": {
@@ -167,6 +174,7 @@ BRAND_CONFIG = {
         "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_4_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
         "region_name": "Brazil",
         "brand_name": "Hyundai",
+        "hidden": True,
     },
 }
 
@@ -541,8 +549,12 @@ def index():
             brand_html = f'<input type="hidden" name="brand" value="{default_brand}">'
         else:
             # Build grouped options from BRAND_CONFIG
+            # Hidden brands only shown when SHOW_ALL_REGIONS=true or brand is explicitly set
+            show_all = os.environ.get("SHOW_ALL_REGIONS", "").lower() in ("true", "1", "yes")
             regions = {}
             for key, cfg in BRAND_CONFIG.items():
+                if cfg.get("hidden") and not show_all:
+                    continue
                 rn = cfg["region_name"]
                 regions.setdefault(rn, []).append((key, cfg["brand_name"]))
             options_html = ""
