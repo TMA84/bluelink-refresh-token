@@ -9,6 +9,8 @@ services:
     container_name: bluelink-token
     ports:
       - "9876:9876"
+    volumes:
+      - bluelink-data:/data    # persists token expiry info across restarts
     environment:
       - BRAND=eu_kia              # or eu_hyundai
       - BLUELINK_USERNAME=your@email.com
@@ -17,6 +19,9 @@ services:
       - EVCC_PASSWORD=            # optional
     command: ["/run-standalone.sh"]
     restart: unless-stopped
+
+volumes:
+  bluelink-data:
 ```
 
 ```bash

@@ -745,6 +745,13 @@ def _headless_login_eu(username, password, config):
     state["status"] = "success"
     log("Token generated successfully via headless login!", "ok")
     update_ha_sensor(get_brand())
+    # Save generation timestamp for Docker (non-HA) expiry check
+    try:
+        os.makedirs("/data", exist_ok=True)
+        with open("/data/token_generated.txt", "w") as f:
+            f.write(datetime.now(timezone.utc).isoformat())
+    except Exception:
+        pass
 
     return {"ok": True, "message": "Login successful — tokens generated!"}
 
@@ -942,6 +949,27 @@ def _auto_start_login():
                         log(f"Auto-start: token expires in {days_left} days — renewing...")
         except Exception as e:
             print(f"[AUTO] Could not check sensor: {e}", flush=True)
+
+    # Fallback for Docker (no HA): check /data/token_generated.txt
+    if not supervisor_token:
+        try:
+            with open("/data/token_generated.txt") as f:
+                from datetime import date
+                generated = datetime.fromisoformat(f.read().strip())
+                expiry = generated + timedelta(days=TOKEN_EXPIRY_DAYS)
+                days_left = (expiry - datetime.now(timezone.utc)).days
+                if days_left > 14:
+                    print(f"[AUTO] Token still valid ({days_left} days left), skipping renewal", flush=True)
+                    log(f"Auto-start: token still valid ({days_left} days remaining). Skipping renewal.")
+                    state["status"] = "idle"
+                    return
+                else:
+                    print(f"[AUTO] Token expires in {days_left} days, renewing...", flush=True)
+                    log(f"Auto-start: token expires in {days_left} days — renewing...")
+        except FileNotFoundError:
+            pass  # No previous token, generate new one
+        except Exception as e:
+            print(f"[AUTO] Could not check token file: {e}", flush=True)
 
     print(f"[AUTO] Credentials configured — starting headless login for {brand}...")
     state["status"] = "processing"
