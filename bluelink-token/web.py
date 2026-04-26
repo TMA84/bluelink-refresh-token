@@ -646,11 +646,12 @@ def _headless_login_eu(username, password, config):
     s.headers.update({"User-Agent": config["user_agent"]})
 
     # Step 1: Load authorize page to get session cookies
-    log("Headless: loading authorize page...")
+    log(f"Headless: loading authorize page ({host})...")
     auth_url = (f"{host}/auth/api/v2/user/oauth2/authorize"
                 f"?response_type=code&client_id={client_id}"
                 f"&redirect_uri={redirect_uri}&lang=de&state=ccsp&country=de")
-    s.get(auth_url, allow_redirects=True)
+    resp = s.get(auth_url, allow_redirects=True)
+    log(f"Headless: authorize page loaded (HTTP {resp.status_code}, cookies: {list(s.cookies.keys())})")
 
     # Step 2: Get RSA public key for password encryption
     log("Headless: fetching RSA public key...")
@@ -659,6 +660,7 @@ def _headless_login_eu(username, password, config):
         return {"ok": False, "error": f"Certs endpoint returned {resp.status_code}"}
     jwk = resp.json().get("retValue", {})
     kid = jwk.get("kid", "")
+    log(f"Headless: RSA key loaded (kid: {kid})")
 
     # Convert JWK to RSA key
     n_bytes = base64.urlsafe_b64decode(jwk["n"] + "==")
@@ -670,7 +672,7 @@ def _headless_login_eu(username, password, config):
     encrypted_pw = cipher.encrypt(password.encode("utf-8")).hex()
 
     # Step 3: POST signin with app client_id → code comes directly in redirect
-    log("Headless: signing in...")
+    log(f"Headless: signing in as {username[:3]}***@{username.split('@')[-1] if '@' in username else '***'}...")
     resp = s.post(f"{host}/auth/account/signin", data={
         "client_id": client_id,
         "encryptedPassword": "true",
@@ -685,15 +687,20 @@ def _headless_login_eu(username, password, config):
         "_csrf": "",
     }, allow_redirects=False)
 
+    log(f"Headless: signin response HTTP {resp.status_code}")
     if resp.status_code != 302:
-        return {"ok": False, "error": f"Signin returned HTTP {resp.status_code}: {resp.text[:200]}"}
+        return {"ok": False, "error": f"Signin returned HTTP {resp.status_code} (expected 302). Response: {resp.text[:300]}"}
 
     location = resp.headers.get("location", "")
+    log(f"Headless: redirect → {location[:120]}...")
     code_list = parse_qs(urlparse(location).query).get("code")
     if not code_list:
-        if "error" in location:
-            return {"ok": False, "error": f"Signin error: {location[:200]}"}
-        return {"ok": False, "error": f"No code in redirect: {location[:200]}"}
+        if "error" in location.lower():
+            error_desc = parse_qs(urlparse(location).query).get("error_description", ["unknown"])[0]
+            return {"ok": False, "error": f"Signin rejected: {error_desc}"}
+        if "authorize" in location:
+            return {"ok": False, "error": "Signin failed — redirected back to login page. Please check username and password."}
+        return {"ok": False, "error": f"No code in redirect: {location[:250]}"}
 
     code = code_list[0]
     log(f"Headless: authorization code received.", "ok")
