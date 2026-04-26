@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/sponsors/TMA84"><img src="https://img.shields.io/badge/Sponsor-♥-ea4aaa?logo=github" alt="Sponsor on GitHub"></a>
+  <a href="https://github.com/sponsors/TMA84"><img src="https://img.shields.io/badge/Sponsor_on_GitHub-♥-ea4aaa?style=for-the-badge&logo=github" alt="Sponsor on GitHub"></a>
 </p>
 
 ---
