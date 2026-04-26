@@ -449,6 +449,20 @@ def get_token_thread(brand):
         state["status"] = "processing"
         log("Retrieving authorization code...")
 
+        # For EU brands with headless support: try headless token exchange after browser login
+        # This avoids the connector_session_key flow that gets blocked
+        if HAS_CURL_CFFI and brand in ("eu_kia", "eu_hyundai") and username and password:
+            log("Trying headless token exchange (bypasses connector_session_key)...", "ok")
+            try:
+                result = _headless_login_eu(username, password, config)
+                if result.get("ok"):
+                    log("Token generated via headless exchange!", "ok")
+                    return
+                else:
+                    log(f"Headless exchange failed: {result.get('error', 'unknown')}, trying browser redirect...", "warn")
+            except Exception as e:
+                log(f"Headless exchange error: {e}, trying browser redirect...", "warn")
+
         # If config has a separate redirect_url, navigate to it and wait for code
         if config.get("redirect_url"):
             driver.get(config["redirect_url"])
