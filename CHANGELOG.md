@@ -22,6 +22,48 @@
 - EU Hyundai: headless Token-Exchange nach Browser-Login (umgeht `connector_session_key` Block)
 - Brand-Override wird bei Quick Login korrekt gesetzt
 
+## 4.2.1
+
+### Verbesserung
+- Remote Browser (noVNC) nur noch für nicht-EU Brands sichtbar
+- EU Kia/Hyundai: nur Credentials + Login Button (cleaner UI)
+- "Fill only" Button nur bei nicht-EU Brands
+
+## 4.2.0
+
+### Neu
+- **`show_all_regions` Option** — nicht-EU Regionen im Brand-Selector nur wenn aktiviert
+- **evcc Passwort maskiert** — wird in HA als Passwort-Feld angezeigt (nicht Klartext)
+- Brand-Schema in HA-Config auf EU reduziert
+
+## 4.1.3
+
+### Fix
+- EU Hyundai: headless Token-Exchange nach Browser-Login (umgeht `connector_session_key` Block)
+
+## 4.1.2
+
+### Neu
+- **Auto-Login** — headless Login startet automatisch beim Container-Start wenn `BLUELINK_USERNAME` + `BLUELINK_PASSWORD` gesetzt sind
+
+## 4.1.1
+
+### Fix
+- Headless Login wird jetzt auch im `get_token_thread` vor dem Browser-Start versucht
+
+## 4.1.0
+
+### Neu
+- **Headless Login** für EU Kia und EU Hyundai — komplett ohne Browser
+  - Durch Reverse Engineering der Kia Connect App (v2.1.27) entwickelt
+  - Nutzt `curl_cffi` für Android Chrome TLS-Fingerprint
+  - RSA-Passwort-Verschlüsselung wie die originale App
+  - Signin direkt mit App `client_id` → Code im Redirect
+- **Fill & Login UI** — Username/Password Felder im Web-Interface
+- `/api/autologin` Endpoint (xdotool + headless Fallback)
+- `curl_cffi` + `pycryptodome` als neue Dependencies
+- Paste-Feld durch Fill & Login ersetzt
+
 ## 4.0.2
 
 ### Fix
@@ -167,3 +209,29 @@
 ### Entfernt
 - `build.yaml` — nicht mehr benötigt, Inhalte ins Dockerfile migriert
 - Architekturen `i386`, `armhf`, `armv7` — für Chromium/Selenium nicht relevant
+
+## 2.6.0
+
+### Neu
+- **GitHub Actions CI/CD** — automatischer Multi-Arch Container-Build (amd64, aarch64) mit Push zu ghcr.io
+
+## 2.5.1
+
+### Fix
+- **Production WSGI Server** — Flask Dev-Server durch gunicorn ersetzt für stabileren Betrieb
+
+## 2.5.0
+
+### Neu
+- **Brand-Auswahl im Web UI** — Hyundai oder Kia direkt auf der Startseite wählbar
+- **Schnelleres Credential Autofill** — `WebDriverWait` statt `time.sleep(3)`
+- **Schnellere Texteingabe** — xdotool delay von 50ms auf 12ms reduziert
+
+## 2.4.1
+
+### Neu
+- Initial Release: Bluelink Token Generator als Home Assistant Add-on
+- Chromium Browser mit mobilem User-Agent im Container
+- noVNC Remote-Viewer für Browser-Interaktion
+- Automatische Token-Extraktion nach Login
+- Unterstützung für Hyundai und Kia (EU)
