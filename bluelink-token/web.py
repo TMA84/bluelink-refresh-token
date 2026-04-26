@@ -534,6 +534,8 @@ def index():
 </div>""")
 
     elif s == "waiting_login":
+        env_user = os.environ.get("BLUELINK_USERNAME", "")
+        env_pass = os.environ.get("BLUELINK_PASSWORD", "")
         return render(f"""
 <div class="card">
     <div class="card-title">Sign in to {bt} Bluelink</div>
@@ -543,18 +545,51 @@ def index():
     </div>
     <div class="log" id="log-box">{format_log()}</div>
     <hr class="divider">
-    <div class="section-label">Paste text into browser</div>
-    <div class="paste-row">
-        <input type="password" id="paste-text" placeholder="Paste text here (e.g. password)..."
-               onkeydown="if(event.key==='Enter')sendClipboard()">
-        <button class="btn btn-secondary" onclick="sendClipboard()">Send</button>
+    <div class="section-label">Auto-fill credentials</div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
+        <input type="text" id="login-user" placeholder="E-Mail / Username"
+               value="{html_lib.escape(env_user)}" style="width:100%;">
+        <input type="password" id="login-pass" placeholder="Password"
+               value="{html_lib.escape(env_pass)}" style="width:100%;">
+        <div class="actions">
+            <button class="btn btn-primary" onclick="doFillAndLogin()" id="fill-btn">Fill &amp; Login</button>
+            <button class="btn btn-secondary" onclick="doFillOnly()">Fill only</button>
+        </div>
     </div>
-    <p class="hint">Click into the input field in the browser below first, then paste your text above and press Send.</p>
+    <p class="hint">Fills the credentials into the browser below and optionally clicks Sign In.
+        You may still need to solve a CAPTCHA manually.</p>
+    <div id="fill-result"></div>
     <hr class="divider">
     <div class="section-label">Remote browser</div>
     <iframe src="/novnc" class="vnc-frame" id="vnc"></iframe>
 </div>
 <script>
+function doFillAndLogin() {{ _doFill(true); }}
+function doFillOnly() {{ _doFill(false); }}
+function _doFill(clickLogin) {{
+    var btn = document.getElementById('fill-btn');
+    var res = document.getElementById('fill-result');
+    btn.disabled = true; btn.textContent = 'Filling...';
+    res.innerHTML = '';
+    fetch('/api/autologin', {{
+        method: 'POST', headers: {{'Content-Type': 'application/json'}},
+        body: JSON.stringify({{
+            username: document.getElementById('login-user').value,
+            password: document.getElementById('login-pass').value,
+            click_login: clickLogin
+        }})
+    }}).then(function(r){{ return r.json(); }}).then(function(d) {{
+        btn.disabled = false; btn.textContent = 'Fill & Login';
+        if (d.ok) {{
+            res.innerHTML = '<div class="notice notice-success">' + d.message + '</div>';
+        }} else {{
+            res.innerHTML = '<div class="notice notice-error">' + d.error + '</div>';
+        }}
+    }}).catch(function(e) {{
+        btn.disabled = false; btn.textContent = 'Fill & Login';
+        res.innerHTML = '<div class="notice notice-error">Request failed</div>';
+    }});
+}}
 (function poll() {{
     fetch('/api/status').then(function(r){{ return r.json(); }}).then(function(d) {{
         document.getElementById('log-box').innerHTML = d.log;
@@ -837,6 +872,59 @@ def api_type():
         subprocess.run(["xdotool", "type", "--clearmodifiers", "--delay", "12", text],
                        env={**os.environ, "DISPLAY": ":99"}, timeout=10)
         return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+@app.route("/api/autologin", methods=["POST"])
+def api_autologin():
+    """Fill username + password into the browser and optionally click login."""
+    data = request.get_json()
+    username = data.get("username", "")
+    password = data.get("password", "")
+    click_login = data.get("click_login", False)
+    if not username or not password:
+        return jsonify({"ok": False, "error": "Username and password required"})
+    xenv = {**os.environ, "DISPLAY": ":99"}
+    try:
+        # Find and click the email/username field
+        # Use xdotool to search for the input field by tab-navigating
+        # First, click somewhere in the browser to focus it
+        subprocess.run(["xdotool", "key", "--clearmodifiers", "Escape"], env=xenv, timeout=5)
+        time.sleep(0.3)
+
+        # Tab to first input field (email) — press Tab a few times from the top
+        # More reliable: use Ctrl+L to focus address bar, then Tab into page
+        subprocess.run(["xdotool", "key", "--clearmodifiers", "F6"], env=xenv, timeout=5)
+        time.sleep(0.2)
+        # Tab into the page content
+        for _ in range(3):
+            subprocess.run(["xdotool", "key", "--clearmodifiers", "Tab"], env=xenv, timeout=5)
+            time.sleep(0.1)
+
+        # Select all + type username
+        subprocess.run(["xdotool", "key", "--clearmodifiers", "ctrl+a"], env=xenv, timeout=5)
+        time.sleep(0.1)
+        subprocess.run(["xdotool", "type", "--clearmodifiers", "--delay", "12", username],
+                       env=xenv, timeout=10)
+        time.sleep(0.3)
+
+        # Tab to password field
+        subprocess.run(["xdotool", "key", "--clearmodifiers", "Tab"], env=xenv, timeout=5)
+        time.sleep(0.2)
+
+        # Type password
+        subprocess.run(["xdotool", "type", "--clearmodifiers", "--delay", "12", password],
+                       env=xenv, timeout=10)
+        time.sleep(0.3)
+
+        msg = "Credentials filled."
+
+        if click_login:
+            # Press Enter to submit the form
+            subprocess.run(["xdotool", "key", "--clearmodifiers", "Return"], env=xenv, timeout=5)
+            msg = "Credentials filled and login submitted."
+
+        return jsonify({"ok": True, "message": msg})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
 
