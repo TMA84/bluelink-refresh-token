@@ -70,6 +70,8 @@ actions:
 mode: single
 ```
 
+> **Note:** The addon identifier is `local_bluelink_token`. You can verify this in **Settings → Add-ons → Bluelink Token Generator** — the slug is shown in the URL.
+
 ### Via Start on Boot
 
 Enable **Start on boot** in the addon settings. The addon checks the token expiry on each HA restart and only renews if needed.
