@@ -23,6 +23,5 @@ schema:
   country: str?
   username: str?
   password: password?
-  show_all_regions: bool?
   evcc_url: str?
   evcc_password: password?

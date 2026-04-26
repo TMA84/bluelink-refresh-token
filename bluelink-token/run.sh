@@ -22,9 +22,6 @@ fi
 if bashio::config.has_value 'evcc_password'; then
     EVCC_PASSWORD=$(bashio::config 'evcc_password')
 fi
-if bashio::config.true 'show_all_regions' 2>/dev/null; then
-    export SHOW_ALL_REGIONS="true"
-fi
 export BRAND
 export BLUELINK_USERNAME="$USERNAME"
 export BLUELINK_PASSWORD="$PASSWORD"

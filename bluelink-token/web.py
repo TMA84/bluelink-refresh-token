@@ -46,7 +46,6 @@ state = {
     "error": None, "test_result": "", "log": [], "brand_override": None,
 }
 
-_DEFAULT_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36_CCS_APP_AOS"
 _MOBILE_UA = "Mozilla/5.0 (Linux; Android 4.1.1; Galaxy Nexus Build/JRO03C) AppleWebKit/535.19 (KHTML, like Gecko) Chrome/18.0.1025.166 Mobile Safari/535.19_CCS_APP_AOS"
 
 BRAND_CONFIG = {
@@ -74,107 +73,6 @@ BRAND_CONFIG = {
         "user_agent": _MOBILE_UA,
         "region_name": "Europe",
         "brand_name": "Hyundai",
-    },
-    # ── China ───────────────────────────────────────────────
-    "cn_kia": {
-        "client_id": "9d5df92a-06ae-435f-b459-8304f2efcc67",
-        "client_secret": "tsXdkUg08Av2ZZzXOgWzJyxUT6yeSnNNQkXXPRdKWEANwl1p",
-        "login_url": "https://prd.cn-ccapi.kia.com/api/v1/user/oauth2/authorize?response_type=code&client_id=9d5df92a-06ae-435f-b459-8304f2efcc67&redirect_uri=https://prd.cn-ccapi.kia.com:443/api/v1/user/oauth2/redirect",
-        "token_url": "https://prd.cn-ccapi.kia.com/api/v1/user/oauth2/token",
-        "redirect_url_final": "https://prd.cn-ccapi.kia.com:443/api/v1/user/oauth2/redirect",
-        "success_selector": None,
-        "user_agent": _DEFAULT_UA,
-        "region_name": "China",
-        "brand_name": "Kia",
-        "hidden": True,
-    },
-    "cn_hyundai": {
-        "client_id": "72b3d019-5bc7-443d-a437-08f307cf06e2",
-        "client_secret": "secret",
-        "login_url": "https://prd.cn-ccapi.hyundai.com/api/v1/user/oauth2/authorize?response_type=code&client_id=72b3d019-5bc7-443d-a437-08f307cf06e2&redirect_uri=https://prd.cn-ccapi.hyundai.com:443/api/v1/user/oauth2/redirect",
-        "token_url": "https://prd.cn-ccapi.hyundai.com/api/v1/user/oauth2/token",
-        "redirect_url_final": "https://prd.cn-ccapi.hyundai.com:443/api/v1/user/oauth2/redirect",
-        "success_selector": None,
-        "user_agent": _DEFAULT_UA,
-        "region_name": "China",
-        "brand_name": "Hyundai",
-        "hidden": True,
-    },
-    # ── Australia ───────────────────────────────────────────
-    "au_kia": {
-        "client_id": "8acb778a-b918-4a8d-8624-73a0beb64289",
-        "client_secret": "7ScMMm6fEYXdiEPCxaPaQmgeYdlUrfwoh4AfXGOzYIS2Cu9T",
-        "login_url": "https://au-apigw.ccs.kia.com.au:8082/api/v1/user/oauth2/authorize?response_type=code&client_id=8acb778a-b918-4a8d-8624-73a0beb64289&redirect_uri=https://au-apigw.ccs.kia.com.au:8082/api/v1/user/oauth2/redirect",
-        "token_url": "https://au-apigw.ccs.kia.com.au:8082/api/v1/user/oauth2/token",
-        "redirect_url_final": "https://au-apigw.ccs.kia.com.au:8082/api/v1/user/oauth2/redirect",
-        "success_selector": None,
-        "user_agent": _DEFAULT_UA,
-        "region_name": "Australia",
-        "brand_name": "Kia",
-        "hidden": True,
-    },
-    "au_hyundai": {
-        "client_id": "855c72df-dfd7-4230-ab03-67cbf902bb1c",
-        "client_secret": "e6fbwHM32YNbhQl0pviaPp3rf4t3S6k91eceA3MJLdbdThCO",
-        "login_url": "https://au-apigw.ccs.hyundai.com.au:8080/api/v1/user/oauth2/authorize?response_type=code&client_id=855c72df-dfd7-4230-ab03-67cbf902bb1c&redirect_uri=https://au-apigw.ccs.hyundai.com.au:8080/api/v1/user/oauth2/redirect",
-        "token_url": "https://au-apigw.ccs.hyundai.com.au:8080/api/v1/user/oauth2/token",
-        "redirect_url_final": "https://au-apigw.ccs.hyundai.com.au:8080/api/v1/user/oauth2/redirect",
-        "success_selector": None,
-        "user_agent": _DEFAULT_UA,
-        "region_name": "Australia",
-        "brand_name": "Hyundai",
-        "hidden": True,
-    },
-    # ── New Zealand ─────────────────────────────────────────
-    "nz_kia": {
-        "client_id": "4ab606a7-cea4-48a0-a216-ed9c14a4a38c",
-        "client_secret": "0haFqXTkKktNKfzkxhZ0aku31i74g0yQFm5od2mz4LdI5mLY",
-        "login_url": "https://au-apigw.ccs.kia.com.au:8082/api/v1/user/oauth2/authorize?response_type=code&client_id=4ab606a7-cea4-48a0-a216-ed9c14a4a38c&redirect_uri=https://au-apigw.ccs.kia.com.au:8082/api/v1/user/oauth2/redirect",
-        "token_url": "https://au-apigw.ccs.kia.com.au:8082/api/v1/user/oauth2/token",
-        "redirect_url_final": "https://au-apigw.ccs.kia.com.au:8082/api/v1/user/oauth2/redirect",
-        "success_selector": None,
-        "user_agent": _DEFAULT_UA,
-        "region_name": "New Zealand",
-        "brand_name": "Kia",
-        "hidden": True,
-    },
-    # ── India ───────────────────────────────────────────────
-    "in_kia": {
-        "client_id": "d0fe4855-7527-4be0-ab6e-a481216c705d",
-        "client_secret": "SHoTtXpyfbYmP3XjNA6BrtlDglypPWj920PtKBJPfleHEYpU",
-        "login_url": "https://prd.in-ccapi.kia.connected-car.io:8080/api/v1/user/oauth2/authorize?response_type=code&client_id=d0fe4855-7527-4be0-ab6e-a481216c705d&redirect_uri=https://prd.in-ccapi.kia.connected-car.io:8080/api/v1/user/oauth2/redirect",
-        "token_url": "https://prd.in-ccapi.kia.connected-car.io:8080/api/v1/user/oauth2/token",
-        "redirect_url_final": "https://prd.in-ccapi.kia.connected-car.io:8080/api/v1/user/oauth2/redirect",
-        "success_selector": None,
-        "user_agent": _DEFAULT_UA,
-        "region_name": "India",
-        "brand_name": "Kia",
-        "hidden": True,
-    },
-    "in_hyundai": {
-        "client_id": "e5b3f6d0-7f83-43c9-aff3-a254db7af368",
-        "client_secret": "5JFOCr6C24OfOzlDqZp7EwqrkL0Ww04UaxcDiE6Ud3qI5SE4",
-        "login_url": "https://prd.in-ccapi.hyundai.connected-car.io:8080/api/v1/user/oauth2/authorize?response_type=code&client_id=e5b3f6d0-7f83-43c9-aff3-a254db7af368&redirect_uri=https://prd.in-ccapi.hyundai.connected-car.io:8080/api/v1/user/oauth2/redirect",
-        "token_url": "https://prd.in-ccapi.hyundai.connected-car.io:8080/api/v1/user/oauth2/token",
-        "redirect_url_final": "https://prd.in-ccapi.hyundai.connected-car.io:8080/api/v1/user/oauth2/redirect",
-        "success_selector": None,
-        "user_agent": _DEFAULT_UA,
-        "region_name": "India",
-        "brand_name": "Hyundai",
-        "hidden": True,
-    },
-    # ── Brazil ──────────────────────────────────────────────
-    "br_hyundai": {
-        "client_id": "03f7df9b-7626-4853-b7bd-ad1e8d722bd5",
-        "client_secret": "yQz2bc6Cn8OovVOR7RDWwxTqVwWG3yKBYFDg0HsOXsyxyPlH",
-        "login_url": "https://br-ccapi.hyundai.com.br/api/v1/user/oauth2/authorize?response_type=code&client_id=03f7df9b-7626-4853-b7bd-ad1e8d722bd5&redirect_uri=https://br-ccapi.hyundai.com.br/api/v1/user/oauth2/redirect",
-        "token_url": "https://br-ccapi.hyundai.com.br/api/v1/user/oauth2/token",
-        "redirect_url_final": "https://br-ccapi.hyundai.com.br/api/v1/user/oauth2/redirect",
-        "success_selector": None,
-        "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_4_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
-        "region_name": "Brazil",
-        "brand_name": "Hyundai",
-        "hidden": True,
     },
 }
 
@@ -547,11 +445,9 @@ def index():
         if brand_fixed:
             brand_html = f'<input type="hidden" name="brand" value="{default_brand}">'
         else:
-            show_all = os.environ.get("SHOW_ALL_REGIONS", "").lower() in ("true", "1", "yes")
+            show_all = True
             regions = {}
             for key, cfg in BRAND_CONFIG.items():
-                if cfg.get("hidden") and not show_all:
-                    continue
                 rn = cfg["region_name"]
                 regions.setdefault(rn, []).append((key, cfg["brand_name"]))
             options_html = ""

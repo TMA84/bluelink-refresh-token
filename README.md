@@ -36,9 +36,8 @@ The headless login was developed by reverse engineering the official Kia Connect
 - **Auto-start** — token is generated on container start when credentials are configured
 - **Simple Web UI** — enter credentials and click "Generate Token" (EU brands)
 - **evcc integration** — transfer the token directly to evcc and restart automatically
-- Browser fallback via embedded noVNC viewer for non-EU brands
+- Browser fallback via embedded noVNC viewer if headless login fails
 - Home Assistant token expiry sensor with automation support
-- Non-EU regions available via `show_all_regions` option
 - Works as a Home Assistant add-on or standalone Docker/Podman container
 
 ## ☕ Support this project
@@ -141,26 +140,15 @@ If `EVCC_URL` is configured, the token is automatically transferred to evcc afte
 | `password` | Bluelink password | |
 | `evcc_url` | evcc instance URL (optional) | |
 | `evcc_password` | evcc admin password (optional) | |
-| `show_all_regions` | Show non-EU regions in brand selector | `false` |
 
-### Supported Regions and Brands
+### Supported Brands
 
-| Value | Region | Brand | Headless Login |
-|-------|--------|-------|:--------------:|
-| `eu_kia` | Europe | Kia | ✅ |
-| `eu_hyundai` | Europe | Hyundai | ✅ |
-| `cn_kia` | China | Kia | Browser |
-| `cn_hyundai` | China | Hyundai | Browser |
-| `au_kia` | Australia | Kia | Browser |
-| `au_hyundai` | Australia | Hyundai | Browser |
-| `nz_kia` | New Zealand | Kia | Browser |
-| `in_kia` | India | Kia | Browser |
-| `in_hyundai` | India | Hyundai | Browser |
-| `br_hyundai` | Brazil | Hyundai | Browser |
+| Value | Brand | Headless Login |
+|-------|-------|:--------------:|
+| `eu_kia` | Kia (Europe) | ✅ |
+| `eu_hyundai` | Hyundai (Europe) | ✅ |
 
 Legacy values `kia` and `hyundai` are aliases for `eu_kia` and `eu_hyundai`.
-
-Non-EU regions are hidden by default. Enable them with `show_all_regions: true` in the add-on config or `SHOW_ALL_REGIONS=true` as environment variable.
 
 ### Environment Variables (Docker/Podman)
 
@@ -172,7 +160,6 @@ Non-EU regions are hidden by default. Enable them with `show_all_regions: true` 
 | `EVCC_URL` | evcc URL for automatic token transfer |
 | `EVCC_PASSWORD` | evcc admin password |
 | `COUNTRY` | Country code for EU Hyundai (default: `DE`) |
-| `SHOW_ALL_REGIONS` | `true` to show non-EU regions in UI |
 
 ## Token Expiry
 
