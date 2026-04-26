@@ -41,6 +41,12 @@ The headless login was developed by reverse engineering the official Kia Connect
 - Non-EU regions available via `show_all_regions` option
 - Works as a Home Assistant add-on or standalone Docker/Podman container
 
+## ☕ Support this project
+
+This project is developed and maintained in my free time. If it saves you time or helps you get your Kia/Hyundai connected, I'd appreciate your support:
+
+<a href="https://github.com/sponsors/TMA84"><img src="https://img.shields.io/badge/Sponsor_on_GitHub-♥-ea4aaa?style=for-the-badge&logo=github" alt="Sponsor on GitHub"></a>
+
 ## Installation
 
 ### Home Assistant Add-on
@@ -202,12 +208,6 @@ Use the refresh token as the **password** (not your Bluelink password) when conf
 ## Support
 
 Got questions or issues? [Open an issue on GitHub.](https://github.com/TMA84/bluelink-refresh-token/issues)
-
-### ☕ Sponsor this project
-
-This project is developed and maintained in my free time. If it saves you time or helps you get your Kia/Hyundai connected, I'd appreciate your support:
-
-<a href="https://github.com/sponsors/TMA84"><img src="https://img.shields.io/badge/Sponsor_on_GitHub-♥-ea4aaa?style=for-the-badge&logo=github" alt="Sponsor on GitHub"></a>
 
 ## Credits
 
