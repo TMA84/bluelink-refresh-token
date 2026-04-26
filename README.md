@@ -34,10 +34,11 @@ The headless login was developed by reverse engineering the official Kia Connect
 
 - **Headless login** for EU Kia and EU Hyundai — no browser, no CAPTCHA, fully automatic
 - **Auto-start** — token is generated on container start when credentials are configured
-- Web UI with username/password fields and "Fill & Login" button
+- **Simple Web UI** — enter credentials and click "Generate Token" (EU brands)
 - **evcc integration** — transfer the token directly to evcc and restart automatically
-- Browser fallback via embedded noVNC viewer for non-EU brands or if headless login fails
+- Browser fallback via embedded noVNC viewer for non-EU brands
 - Home Assistant token expiry sensor with automation support
+- Non-EU regions available via `show_all_regions` option
 - Works as a Home Assistant add-on or standalone Docker/Podman container
 
 ## Installation
@@ -134,6 +135,7 @@ If `EVCC_URL` is configured, the token is automatically transferred to evcc afte
 | `password` | Bluelink password | |
 | `evcc_url` | evcc instance URL (optional) | |
 | `evcc_password` | evcc admin password (optional) | |
+| `show_all_regions` | Show non-EU regions in brand selector | `false` |
 
 ### Supported Regions and Brands
 
@@ -152,6 +154,8 @@ If `EVCC_URL` is configured, the token is automatically transferred to evcc afte
 
 Legacy values `kia` and `hyundai` are aliases for `eu_kia` and `eu_hyundai`.
 
+Non-EU regions are hidden by default. Enable them with `show_all_regions: true` in the add-on config or `SHOW_ALL_REGIONS=true` as environment variable.
+
 ### Environment Variables (Docker/Podman)
 
 | Variable | Description |
@@ -162,6 +166,7 @@ Legacy values `kia` and `hyundai` are aliases for `eu_kia` and `eu_hyundai`.
 | `EVCC_URL` | evcc URL for automatic token transfer |
 | `EVCC_PASSWORD` | evcc admin password |
 | `COUNTRY` | Country code for EU Hyundai (default: `DE`) |
+| `SHOW_ALL_REGIONS` | `true` to show non-EU regions in UI |
 
 ## Token Expiry
 

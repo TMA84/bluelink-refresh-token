@@ -1,5 +1,38 @@
 # Changelog
 
+## 4.3.0
+
+### Neu
+- **Headless Login** für EU Kia und EU Hyundai — komplett ohne Browser
+  - Durch Reverse Engineering der Kia Connect App (v2.1.27) entwickelt
+  - Nutzt `curl_cffi` für Android Chrome TLS-Fingerprint
+  - RSA-Passwort-Verschlüsselung wie die originale App
+  - Signin direkt mit App `client_id` → Code im Redirect (kein `connector_session_key`)
+- **Auto-Login** — Token wird automatisch beim Container-Start generiert wenn Credentials konfiguriert sind
+- **Vereinfachte Web-UI für EU** — Credentials eingeben, "Generate Token" klicken, fertig
+  - Kein "Start" Zwischenschritt, kein Remote Browser für EU Brands
+  - Remote Browser nur noch für nicht-EU Regionen sichtbar
+- **Quick Login API** — `/api/quicklogin` Endpoint für direkten headless Login aus der UI
+- **Brand-Auswahl im Quick Login** — UI-Auswahl wird korrekt an den Login durchgereicht
+- **Nicht-EU Regionen ausgeblendet** — nur über `show_all_regions` Option aktivierbar
+- **evcc Passwort maskiert** — wird in HA als Passwort-Feld angezeigt (nicht Klartext)
+- **Reset Button** auf Success- und Error-Seite
+
+### Fix
+- EU Hyundai: headless Token-Exchange nach Browser-Login (umgeht `connector_session_key` Block)
+- Brand-Override wird bei Quick Login korrekt gesetzt
+
+## 4.0.2
+
+### Fix
+- Erweiterte Anti-Detection gegen Kia Abuse-Erkennung
+
+## 4.0.1
+
+### Fix
+- Mobile User-Agent für EU Kia/Hyundai
+- Bessere OAuth Fehlermeldungen
+
 ## 4.0.0
 
 ### Neu

@@ -537,19 +537,16 @@ def index():
     s = state["status"]
 
     if s == "idle":
-        has_creds = bool(os.environ.get("BLUELINK_USERNAME")) and bool(os.environ.get("BLUELINK_PASSWORD"))
-        creds_note = ("Credentials are configured and will be filled in automatically. "
-                      "You only need to click the Sign In button.") if has_creds else (
-                      "No credentials configured. You will need to enter them manually in the browser. "
-                      "Tip: Set username and password in the addon configuration for auto-fill.")
+        env_user = os.environ.get("BLUELINK_USERNAME", "")
+        env_pass = os.environ.get("BLUELINK_PASSWORD", "")
         default_brand = os.environ.get("BRAND", "auto").lower()
         default_brand = BRAND_ALIASES.get(default_brand, default_brand)
         brand_fixed = default_brand in BRAND_CONFIG
+        is_eu = brand in ("eu_kia", "eu_hyundai")
+
         if brand_fixed:
             brand_html = f'<input type="hidden" name="brand" value="{default_brand}">'
         else:
-            # Build grouped options from BRAND_CONFIG
-            # Hidden brands only shown when SHOW_ALL_REGIONS=true or brand is explicitly set
             show_all = os.environ.get("SHOW_ALL_REGIONS", "").lower() in ("true", "1", "yes")
             regions = {}
             for key, cfg in BRAND_CONFIG.items():
@@ -574,12 +571,65 @@ def index():
                 {options_html}
             </select>
         </div>"""
-        return render(f"""
+
+        if is_eu and HAS_CURL_CFFI:
+            # EU brands: simple credentials form, headless login
+            return render(f"""
+<div class="card">
+    <div class="card-title">Generate Refresh Token</div>
+    <p style="margin-bottom: 16px; color: var(--text-secondary); font-size: 14px;">
+        Enter your {bt} Bluelink credentials (same as the mobile app).
+        The token will be generated automatically — no browser needed.
+    </p>
+    <form method="POST" action="/api/quicklogin" id="login-form">
+        {brand_html}
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+            <input type="text" name="username" id="ql-user" placeholder="E-Mail / Username"
+                   value="{html_lib.escape(env_user)}" required>
+            <input type="password" name="password" id="ql-pass" placeholder="Password"
+                   value="{html_lib.escape(env_pass)}" required>
+        </div>
+        <button type="submit" class="btn btn-primary" id="ql-btn">Generate Token</button>
+    </form>
+    <div id="ql-result" style="margin-top:12px;"></div>
+</div>
+<script>
+document.getElementById('login-form').addEventListener('submit', function(e) {{
+    e.preventDefault();
+    var btn = document.getElementById('ql-btn');
+    var res = document.getElementById('ql-result');
+    btn.disabled = true; btn.textContent = 'Generating...';
+    res.innerHTML = '<div class="notice notice-info">Logging in and generating token...</div>';
+    fetch('/api/quicklogin', {{
+        method: 'POST', headers: {{'Content-Type': 'application/json'}},
+        body: JSON.stringify({{
+            username: document.getElementById('ql-user').value,
+            password: document.getElementById('ql-pass').value,
+            brand: (document.getElementById('brand-select') || {{}}).value || '{brand}'
+        }})
+    }}).then(function(r){{ return r.json(); }}).then(function(d) {{
+        if (d.ok) {{
+            location.reload();
+        }} else {{
+            btn.disabled = false; btn.textContent = 'Generate Token';
+            res.innerHTML = '<div class="notice notice-error">' + d.error + '</div>';
+        }}
+    }}).catch(function() {{
+        btn.disabled = false; btn.textContent = 'Generate Token';
+        res.innerHTML = '<div class="notice notice-error">Request failed</div>';
+    }});
+}});
+</script>""")
+        else:
+            # Non-EU or no curl_cffi: browser-based flow
+            creds_note = ("Credentials are configured and will be filled in automatically.") if (env_user and env_pass) else (
+                "You will need to enter your credentials in the browser.")
+            return render(f"""
 <div class="card">
     <div class="card-title">Generate Refresh Token</div>
     <p style="margin-bottom: 12px; color: var(--text-secondary); font-size: 14px;">
-        A Chromium browser will open in the background. You can interact with it
-        through the embedded viewer below to complete the {"" if brand_fixed else ""}Bluelink login.
+        A browser will open in the background. Complete the Bluelink login
+        through the embedded viewer to generate the token.
     </p>
     <div class="notice notice-info">{creds_note}</div>
     <form method="POST" action="/start">
@@ -726,7 +776,7 @@ function _doFill(clickLogin) {{
             <button type="submit" class="btn btn-secondary">Verify token</button>
         </form>
         <form method="POST" action="/reset" style="margin:0;">
-            <button type="submit" class="btn btn-danger">Generate new token</button>
+            <button type="submit" class="btn btn-danger">Reset</button>
         </form>
     </div>
     <hr class="divider">
@@ -860,7 +910,7 @@ function evccReset() {{
     <details open><summary>Log</summary><div class="log">{format_log()}</div></details>
     <hr class="divider">
     <form method="POST" action="/reset">
-        <button type="submit" class="btn btn-primary">Try again</button>
+        <button type="submit" class="btn btn-danger">Reset</button>
     </form>
 </div>""")
 
@@ -933,6 +983,42 @@ def api_type():
                        env={**os.environ, "DISPLAY": ":99"}, timeout=10)
         return jsonify({"ok": True})
     except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+@app.route("/api/quicklogin", methods=["POST"])
+def api_quicklogin():
+    """Direct headless login for EU brands — no browser, no Start button needed."""
+    data = request.get_json()
+    username = data.get("username", "")
+    password = data.get("password", "")
+    chosen_brand = data.get("brand", "").lower()
+    if not username or not password:
+        return jsonify({"ok": False, "error": "Username and password required"})
+    if not HAS_CURL_CFFI:
+        return jsonify({"ok": False, "error": "curl_cffi not available"})
+
+    # Use brand from request, fall back to get_brand()
+    chosen_brand = BRAND_ALIASES.get(chosen_brand, chosen_brand)
+    if chosen_brand in BRAND_CONFIG:
+        state["brand_override"] = chosen_brand
+    brand = chosen_brand if chosen_brand in BRAND_CONFIG else get_brand()
+    config = BRAND_CONFIG[brand]
+    if brand not in ("eu_kia", "eu_hyundai"):
+        return jsonify({"ok": False, "error": "Quick login only supported for EU brands"})
+
+    state["status"] = "processing"
+    state["log"] = []
+    log(f"Quick login: starting for {config['region_name']} {config['brand_name']}...")
+
+    try:
+        result = _headless_login_eu(username, password, config)
+        if result.get("ok"):
+            return jsonify({"ok": True})
+        else:
+            state["status"] = "idle"
+            return jsonify({"ok": False, "error": result.get("error", "Login failed")})
+    except Exception as e:
+        state["status"] = "idle"
         return jsonify({"ok": False, "error": str(e)})
 
 @app.route("/api/autologin", methods=["POST"])
