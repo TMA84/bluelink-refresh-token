@@ -917,6 +917,32 @@ def _auto_start_login():
     brand = brand_env if brand_env in BRAND_CONFIG else "eu_kia"
     config = BRAND_CONFIG[brand]
 
+    # Check HA sensor for token expiry — skip if token is still valid
+    supervisor_token = os.environ.get("SUPERVISOR_TOKEN")
+    if supervisor_token:
+        try:
+            resp = req_lib.get(
+                "http://supervisor/core/api/states/sensor.bluelink_token_expiry",
+                headers={"Authorization": f"Bearer {supervisor_token}"},
+                timeout=5)
+            if resp.status_code == 200:
+                sensor = resp.json()
+                expiry_str = sensor.get("state", "")
+                if expiry_str and expiry_str != "unknown" and expiry_str != "unavailable":
+                    from datetime import date
+                    expiry = date.fromisoformat(expiry_str)
+                    days_left = (expiry - date.today()).days
+                    if days_left > 14:
+                        print(f"[AUTO] Token still valid ({days_left} days left), skipping renewal", flush=True)
+                        log(f"Auto-start: token still valid ({days_left} days remaining, expires {expiry_str}). Skipping renewal.")
+                        state["status"] = "idle"
+                        return
+                    else:
+                        print(f"[AUTO] Token expires in {days_left} days, renewing...", flush=True)
+                        log(f"Auto-start: token expires in {days_left} days — renewing...")
+        except Exception as e:
+            print(f"[AUTO] Could not check sensor: {e}", flush=True)
+
     print(f"[AUTO] Credentials configured — starting headless login for {brand}...")
     state["status"] = "processing"
     state["log"] = []

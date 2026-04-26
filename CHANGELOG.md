@@ -1,5 +1,13 @@
 # Changelog
 
+## 5.2.0
+
+### Neu
+- **Token-Gültigkeitsprüfung beim Start** — HA-Sensor `sensor.bluelink_token_expiry` wird geprüft
+  - Token noch >14 Tage gültig → kein Login, nur Info-Meldung
+  - Token läuft in <14 Tagen ab → automatische Erneuerung
+  - Kein Sensor vorhanden → Token wird immer generiert
+
 ## 5.1.0
 
 ### Neu
