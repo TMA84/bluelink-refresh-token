@@ -303,7 +303,7 @@ def index():
         </div>
         <button type="submit" class="btn btn-primary" id="ql-btn">Generate Token</button>
     </form>
-    <div id="ql-result" style="margin-top:12px;"></div>
+    <div id="ql-result" style="margin-top:12px;">{'<div class="notice notice-error">' + html_lib.escape(state.get("error", "")) + '</div>' if state.get("error") else ''}</div>
     <div id="ql-log" style="margin-top:12px;">{('<details open><summary>Log</summary><div class="log">' + format_log() + '</div></details>') if state.get('log') else ''}</div>
 </div>
 <script>
@@ -675,8 +675,25 @@ def _headless_login_eu(username, password, config):
     cipher = PKCS1_v1_5.new(key)
     encrypted_pw = cipher.encrypt(password.encode("utf-8")).hex()
 
+    # Validate password (Kia/Hyundai requirement: 8-20 chars, upper+lower+digit+special)
+    pw_len = len(password)
+    if pw_len < 8 or pw_len > 20:
+        return {"ok": False, "error": f"Password must be 8-20 characters (yours: {pw_len}). "
+                "Kia/Hyundai reject passwords outside this range."}
+    pw_issues = []
+    if not any(c.isupper() for c in password):
+        pw_issues.append("uppercase letter")
+    if not any(c.islower() for c in password):
+        pw_issues.append("lowercase letter")
+    if not any(c.isdigit() for c in password):
+        pw_issues.append("digit")
+    if not any(not c.isalnum() for c in password):
+        pw_issues.append("special character")
+    if pw_issues:
+        log(f"Headless: password may not meet requirements (missing: {', '.join(pw_issues)})", "warn")
+
     # Step 3: POST signin with app client_id → code comes directly in redirect
-    log(f"Headless: signing in as {username[:3]}***@{username.split('@')[-1] if '@' in username else '***'} (password length: {len(password)})...")
+    log(f"Headless: signing in as {username[:3]}***@{username.split('@')[-1] if '@' in username else '***'} (password length: {pw_len})...")
     resp = s.post(f"{host}/auth/account/signin", data={
         "client_id": client_id,
         "encryptedPassword": "true",
@@ -696,7 +713,7 @@ def _headless_login_eu(username, password, config):
         return {"ok": False, "error": f"Signin returned HTTP {resp.status_code} (expected 302). Response: {resp.text[:300]}"}
 
     location = resp.headers.get("location", "")
-    log(f"Headless: redirect → {location[:120]}...")
+    log(f"Headless: redirect → {location}")
     code_list = parse_qs(urlparse(location).query).get("code")
     if not code_list:
         if "error" in location.lower():
