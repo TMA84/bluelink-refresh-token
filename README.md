@@ -18,6 +18,10 @@
   <img src="https://img.shields.io/github/license/TMA84/bluelink-refresh-token" alt="License">
 </p>
 
+<p align="center">
+  <a href="https://paypal.me/dops84"><img src="https://img.shields.io/badge/PayPal-Donate-blue?logo=paypal" alt="Donate via PayPal"></a>
+</p>
+
 ---
 
 ## About
