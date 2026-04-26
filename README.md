@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <a href="https://paypal.me/dops84"><img src="https://img.shields.io/badge/PayPal-Donate-blue?logo=paypal" alt="Donate via PayPal"></a>
+  <a href="https://github.com/sponsors/TMA84"><img src="https://img.shields.io/badge/Sponsor-♥-ea4aaa?logo=github" alt="Sponsor on GitHub"></a>
 </p>
 
 ---
