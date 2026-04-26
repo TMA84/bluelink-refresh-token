@@ -1,5 +1,18 @@
 # Changelog
 
+## 5.1.0
+
+### Neu
+- **Vollautomatischer evcc-Transfer** — Token wird beim Auto-Start direkt an evcc übertragen und evcc neugestartet
+- Komplett unbeaufsichtigter Betrieb: Addon starten → Token generieren → evcc aktualisieren → fertig
+- HA-Automation für automatische Token-Erneuerung vor Ablauf möglich
+
+### Fix
+- Passwort-Validierung (8-20 Zeichen, Kia/Hyundai Anforderung)
+- Fehlermeldung + Log direkt auf der Login-Seite sichtbar
+- Vollständige Redirect-URL im Log
+- Detailliertes Logging: maskierter Username, Passwort-Länge, HTTP-Status
+
 ## 5.0.0
 
 ### Neu

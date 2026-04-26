@@ -155,7 +155,29 @@ Legacy values `kia` and `hyundai` are aliases for `eu_kia` and `eu_hyundai`.
 
 The refresh token is valid for **180 days**. After that, simply restart the add-on to generate a new one.
 
-When running as a Home Assistant add-on, a sensor `sensor.bluelink_token_expiry` is automatically created. Use it to set up an expiry reminder:
+When credentials and evcc are configured, the entire flow is fully automatic on restart: generate token → transfer to evcc → restart evcc. No UI interaction needed.
+
+### Automatic Token Renewal (Home Assistant)
+
+Set up an automation to restart the addon before the token expires:
+
+```yaml
+automation:
+  - alias: "Bluelink Token Auto-Renew"
+    trigger:
+      - platform: template
+        value_template: >
+          {{ (as_timestamp(states('sensor.bluelink_token_expiry')) - as_timestamp(now()))
+             / 86400 < 14 }}
+    action:
+      - service: hassio.addon_restart
+        data:
+          addon: local_bluelink_token
+```
+
+This restarts the addon 14 days before expiry → new token is generated and sent to evcc automatically.
+
+### Expiry Reminder (optional)
 
 ```yaml
 automation:

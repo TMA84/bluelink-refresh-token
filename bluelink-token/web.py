@@ -919,6 +919,11 @@ def _auto_start_login():
         result = _headless_login_eu(username, password, config)
         if result.get("ok"):
             log("Auto-start: login successful!", "ok")
+            # Auto-transfer to evcc if configured
+            evcc_url = os.environ.get("EVCC_URL", "").rstrip("/")
+            evcc_password = os.environ.get("EVCC_PASSWORD", "")
+            if evcc_url and state.get("refresh_token"):
+                _auto_evcc_transfer(evcc_url, evcc_password)
         else:
             log(f"Auto-start: failed: {result.get('error', 'unknown')}", "warn")
             log("Open the web UI to try again.", "warn")
@@ -926,6 +931,75 @@ def _auto_start_login():
     except Exception as e:
         log(f"Auto-start: error: {e}", "warn")
         state["status"] = "idle"
+
+
+def _auto_evcc_transfer(evcc_url, evcc_password):
+    """Auto-transfer refresh token to evcc after successful login."""
+    try:
+        log(f"Auto-start: connecting to evcc ({evcc_url})...")
+        session = req_lib.Session()
+        # Login if needed
+        auth_resp = session.get(f"{evcc_url}/api/auth/status", timeout=10)
+        if auth_resp.status_code == 200 and auth_resp.text.strip() == "false":
+            if evcc_password:
+                session.post(f"{evcc_url}/api/auth/login",
+                             json={"password": evcc_password}, timeout=10)
+        # Get vehicles
+        resp = session.get(f"{evcc_url}/api/config/devices/vehicle", timeout=10)
+        if resp.status_code != 200:
+            log(f"Auto-start: could not fetch evcc vehicles ({resp.status_code})", "warn")
+            return
+        vehicles = [v for v in resp.json().get("result", [])
+                    if any(t in v.get("config", {}).get("type", "").lower()
+                           for t in ("hyundai", "kia", "bluelink"))]
+        if not vehicles:
+            log("Auto-start: no Hyundai/Kia vehicles found in evcc", "warn")
+            return
+        log(f"Auto-start: found {len(vehicles)} vehicle(s) in evcc", "ok")
+        token = state["refresh_token"]
+        for v in vehicles:
+            vid = v["id"]
+            title = v.get("config", {}).get("title", f"Vehicle {vid}")
+            try:
+                # Get current config
+                cfg_resp = session.get(f"{evcc_url}/api/config/devices/vehicle/{vid}", timeout=10)
+                if cfg_resp.status_code != 200:
+                    log(f"Auto-start: could not fetch config for {title}", "warn")
+                    continue
+                payload = {"type": "template"}
+                payload.update(cfg_resp.json().get("result", {}).get("config", {}))
+                payload["password"] = token
+                # Test + apply
+                session.post(f"{evcc_url}/api/config/test/vehicle/merge/{vid}",
+                             json=payload, timeout=30)
+                resp = session.put(f"{evcc_url}/api/config/devices/vehicle/{vid}",
+                                   json=payload, timeout=15)
+                if resp.status_code == 200:
+                    log(f"Auto-start: token sent to {title}", "ok")
+                else:
+                    log(f"Auto-start: failed to update {title} ({resp.status_code})", "warn")
+            except Exception as e:
+                log(f"Auto-start: error updating {title}: {e}", "warn")
+        # Restart evcc
+        log("Auto-start: restarting evcc...")
+        supervisor_token = os.environ.get("SUPERVISOR_TOKEN")
+        if supervisor_token:
+            try:
+                resp = req_lib.post("http://supervisor/addons/a0d7b954_evcc/restart",
+                                    headers={"Authorization": f"Bearer {supervisor_token}"},
+                                    timeout=30)
+                if resp.status_code == 200:
+                    log("Auto-start: evcc restarted via HA Supervisor", "ok")
+                    return
+            except Exception:
+                pass
+        try:
+            session.post(f"{evcc_url}/api/system/shutdown", timeout=10)
+            log("Auto-start: evcc restart triggered", "ok")
+        except Exception:
+            log("Auto-start: could not restart evcc automatically", "warn")
+    except Exception as e:
+        log(f"Auto-start: evcc transfer error: {e}", "warn")
 
 # Auto-start on import (when gunicorn loads the app)
 threading.Thread(target=_auto_start_login, daemon=True).start()
