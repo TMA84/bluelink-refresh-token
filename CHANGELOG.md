@@ -1,5 +1,22 @@
 # Changelog
 
+## 5.0.0
+
+### Neu
+- **Komplett headless** — kein Browser, kein Selenium, kein Chromium mehr im Container
+- Docker-Image deutlich kleiner (kein Xvfb, noVNC, x11vnc, openbox, Chromium, chromedriver)
+- Port 6080 (noVNC) nicht mehr nötig
+- `--shm-size` nicht mehr nötig
+
+### Entfernt
+- Selenium / Chromium Browser-Stack
+- noVNC Remote-Viewer
+- Xvfb, x11vnc, openbox, xdotool
+- `/start`, `/novnc`, `/api/type`, `/api/autologin` Endpoints
+- `waiting_login` State
+- Nicht-EU Regionen (CN, AU, NZ, IN, BR)
+- `show_all_regions` Option
+
 ## 4.3.0
 
 ### Neu

@@ -26,18 +26,18 @@
 
 ## About
 
-This add-on generates Bluelink refresh tokens for Hyundai and Kia vehicles. Since v4.1, it supports a **headless login** that works without any browser interaction — just configure your credentials and the token is generated automatically.
+This add-on generates Bluelink refresh tokens for Hyundai and Kia vehicles. It performs a fully **headless login** — no browser, no CAPTCHA, no manual interaction needed. Just configure your credentials and the token is generated automatically.
 
-The headless login was developed by reverse engineering the official Kia Connect App (v2.1.27). It uses `curl_cffi` to impersonate an Android Chrome TLS fingerprint and performs the complete OAuth flow via HTTP requests.
+The login was developed by reverse engineering the official Kia Connect App (v2.1.27). It uses `curl_cffi` to impersonate an Android Chrome TLS fingerprint and performs the complete OAuth flow via HTTP requests.
 
 ### Features
 
-- **Headless login** for EU Kia and EU Hyundai — no browser, no CAPTCHA, fully automatic
+- **Fully headless** — no browser, no Chromium, no Selenium in the container
 - **Auto-start** — token is generated on container start when credentials are configured
-- **Simple Web UI** — enter credentials and click "Generate Token" (EU brands)
+- **Simple Web UI** — enter credentials and click "Generate Token"
 - **evcc integration** — transfer the token directly to evcc and restart automatically
-- Browser fallback via embedded noVNC viewer if headless login fails
 - Home Assistant token expiry sensor with automation support
+- Lightweight Docker image (no browser dependencies)
 - Works as a Home Assistant add-on or standalone Docker/Podman container
 
 ## ☕ Support this project
@@ -74,14 +74,12 @@ services:
     image: ghcr.io/tma84/bluelink-token:latest
     ports:
       - "9876:9876"
-      - "6080:6080"
     environment:
       - BRAND=eu_kia              # or eu_hyundai
       - BLUELINK_USERNAME=your@email.com
       - BLUELINK_PASSWORD=yourpassword
       - EVCC_URL=http://evcc:7070 # optional
       - EVCC_PASSWORD=            # optional
-    shm_size: 256m
     command: ["/run-standalone.sh"]
 ```
 
@@ -92,8 +90,7 @@ Then open `http://localhost:9876`.
 ```bash
 docker run -d \
   --name bluelink-token \
-  -p 9876:9876 -p 6080:6080 \
-  --shm-size=256m \
+  -p 9876:9876 \
   -e BRAND=eu_kia \
   -e BLUELINK_USERNAME=your@email.com \
   -e BLUELINK_PASSWORD=yourpassword \
@@ -116,15 +113,6 @@ When credentials are configured, the add-on performs a fully automatic login on 
 5. Exchanges the code for access and refresh tokens
 
 No browser, no CAPTCHA, no manual interaction needed.
-
-### Browser Fallback (all regions)
-
-For non-EU brands or if the headless login fails, the add-on falls back to a browser-based flow:
-
-1. Opens a Chromium browser with the correct mobile user-agent
-2. Auto-fills credentials if configured
-3. You complete the login via the embedded noVNC viewer
-4. The token is extracted automatically
 
 ### evcc Integration
 

@@ -10,34 +10,16 @@ LABEL \
     io.hass.type="addon" \
     io.hass.url="https://github.com/TMA84/bluelink-refresh-token"
 
-# Install dependencies
 RUN apk add --no-cache \
     python3 \
     py3-pip \
-    chromium \
-    chromium-chromedriver \
-    xvfb \
-    x11vnc \
-    novnc \
-    websockify \
-    openbox \
-    xdotool \
-    font-noto \
-    ttf-freefont \
-    dbus \
     bash
 
-# Create virtual environment and install dependencies
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:${PATH}"
-RUN pip3 install --no-cache-dir selenium requests flask gunicorn curl_cffi pycryptodome
+RUN pip3 install --no-cache-dir requests flask gunicorn curl_cffi pycryptodome
 
-# Copy addon files
 WORKDIR /app
-
-# Verify chromium and chromedriver are installed
-RUN ls -la /usr/bin/chromium* /usr/lib/chromium/chromedriver 2>/dev/null || true
-RUN ln -sf /usr/lib/chromium/chromedriver /usr/bin/chromedriver 2>/dev/null || true
 
 COPY web.py /app/
 COPY config.yaml /app/
@@ -45,6 +27,6 @@ COPY run.sh /
 COPY run-standalone.sh /
 RUN chmod a+x /run.sh /run-standalone.sh
 
-EXPOSE 9876 6080
+EXPOSE 9876
 
 CMD [ "/run.sh" ]

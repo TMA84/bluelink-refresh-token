@@ -1,26 +1,16 @@
 #!/usr/bin/env python3
-"""Bluelink Token Generator - Web Application with Selenium + noVNC"""
+"""Bluelink Token Generator - Headless Web Application"""
 
-import os, re, time, threading, subprocess, json, base64
+import os, re, time, threading, json, base64
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse, parse_qs
 import requests as req_lib
 from flask import Flask, request, jsonify, redirect as flask_redirect
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
 import html as html_lib
 
-# curl_cffi for headless login (TLS fingerprint impersonation)
-try:
-    from curl_cffi import requests as curl_requests
-    from Crypto.PublicKey import RSA
-    from Crypto.Cipher import PKCS1_v1_5
-    HAS_CURL_CFFI = True
-except ImportError:
-    HAS_CURL_CFFI = False
+from curl_cffi import requests as curl_requests
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_v1_5
 
 app = Flask(__name__)
 
@@ -139,8 +129,6 @@ body { font-family: 'Montserrat', system-ui, -apple-system, 'Segoe UI', sans-ser
        font-family: 'JetBrains Mono', 'Roboto Mono', monospace; font-size: 12px;
        max-height: 200px; overflow-y: auto; margin: 12px 0; line-height: 1.8; }
 .log .ok { color: var(--evcc-green); } .log .warn { color: var(--evcc-dark-yellow); } .log .err { color: var(--evcc-red); }
-.vnc-frame { width: 100%; aspect-ratio: 16/10; border: none;
-             border-radius: 10px; margin: 12px 0; background: var(--text); }
 .paste-row { display: flex; gap: 8px; margin-bottom: 4px; }
 .paste-row input { flex: 1; padding: 10px 14px; border: 1px solid var(--border);
                    border-radius: 10px; font-size: 14px; font-family: inherit;
@@ -170,22 +158,6 @@ function copyToken(id) {
         var orig = btn.textContent;
         btn.textContent = 'Copied';
         setTimeout(function() { btn.textContent = orig; }, 2000);
-    });
-}
-function sendClipboard() {
-    var input = document.getElementById('paste-text');
-    var text = input.value;
-    if (!text) return;
-    fetch('/api/type', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({text: text})
-    }).then(function(r) { return r.json(); }).then(function(d) {
-        if (d.ok) {
-            input.value = '';
-            input.placeholder = 'Sent successfully';
-            setTimeout(function() { input.placeholder = 'Paste text here...'; }, 2000);
-        }
     });
 }
 """
@@ -269,162 +241,6 @@ def update_ha_sensor(brand):
     except Exception as e:
         log(f"Could not update HA sensor: {e}", "warn")
 
-def get_token_thread(brand):
-    config = BRAND_CONFIG[brand]
-    driver = None
-    try:
-        state["status"] = "waiting_login"
-        state["log"] = []
-
-        # ── Try headless login first (no browser needed) ──
-        username = os.environ.get("BLUELINK_USERNAME", "")
-        password = os.environ.get("BLUELINK_PASSWORD", "")
-        if HAS_CURL_CFFI and username and password and brand in ("eu_kia", "eu_hyundai"):
-            log("Trying headless login (no browser needed)...")
-            try:
-                result = _headless_login_eu(username, password, config)
-                if result.get("ok"):
-                    log("Headless login successful — no browser needed!", "ok")
-                    return  # Done! No browser needed.
-                else:
-                    log(f"Headless login failed: {result.get('error', 'unknown')}", "warn")
-                    log("Falling back to browser login...", "warn")
-            except Exception as e:
-                log(f"Headless login error: {e}", "warn")
-                log("Falling back to browser login...", "warn")
-
-        # ── Fallback: Browser-based login ──
-        log("Starting browser...")
-        options = webdriver.ChromeOptions()
-        options.binary_location = "/usr/bin/chromium-browser"
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--disable-gpu")
-        options.add_argument("--window-size=1280,800")
-        options.add_argument("--start-maximized")
-        options.add_argument("--disable-blink-features=AutomationControlled")
-        options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        options.add_experimental_option("useAutomationExtension", False)
-        options.add_argument(f"user-agent={config['user_agent']}")
-        service = webdriver.ChromeService(executable_path="/usr/bin/chromedriver")
-        driver = webdriver.Chrome(service=service, options=options)
-        # Remove webdriver flag from navigator
-        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
-            "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
-        })
-        log(f"Opening {config['region_name']} {config['brand_name']} login page...")
-        country = os.environ.get("COUNTRY", "DE").upper()
-        login_url = config.get("login_url_template", "").format(country=country) if "login_url_template" in config else config["login_url"]
-        driver.get(login_url)
-
-        # Auto-fill credentials if configured
-        username = os.environ.get("BLUELINK_USERNAME", "")
-        password = os.environ.get("BLUELINK_PASSWORD", "")
-        if username and password:
-            log("Auto-filling credentials...")
-            try:
-                email_selector = ("input[type='email'], input[type='text'][name*='mail'], "
-                    "input[type='text'][name*='user'], input[name='username'], "
-                    "input[id*='email'], input[id*='user'], input[type='text']")
-                # Wait for the email field to appear instead of a fixed sleep
-                email_field = WebDriverWait(driver, 15).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, email_selector)))
-                email_field.clear()
-                email_field.send_keys(username)
-                log("Username entered.", "ok")
-
-                # Wait for password field to appear
-                pw_field = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, "input[type='password']")))
-                pw_field.clear()
-                pw_field.send_keys(password)
-                log("Password entered.", "ok")
-                log("Credentials filled — please verify and click Sign In in the browser.", "warn")
-            except Exception as e:
-                log(f"Could not auto-fill: {e} — please enter manually.", "warn")
-        else:
-            log("Waiting for login — please sign in using the browser below.", "warn")
-        wait = WebDriverWait(driver, 300)
-        if config.get("success_selector"):
-            wait.until(EC.any_of(
-                EC.presence_of_element_located((By.CSS_SELECTOR, config["success_selector"])),
-                EC.url_contains("code=")))
-        else:
-            wait.until(EC.url_contains("code="))
-        log("Login successful.", "ok")
-        state["status"] = "processing"
-        log("Retrieving authorization code...")
-
-        # For EU brands with headless support: try headless token exchange after browser login
-        # This avoids the connector_session_key flow that gets blocked
-        if HAS_CURL_CFFI and brand in ("eu_kia", "eu_hyundai") and username and password:
-            log("Trying headless token exchange (bypasses connector_session_key)...", "ok")
-            try:
-                result = _headless_login_eu(username, password, config)
-                if result.get("ok"):
-                    log("Token generated via headless exchange!", "ok")
-                    return
-                else:
-                    log(f"Headless exchange failed: {result.get('error', 'unknown')}, trying browser redirect...", "warn")
-            except Exception as e:
-                log(f"Headless exchange error: {e}, trying browser redirect...", "warn")
-
-        # If config has a separate redirect_url, navigate to it and wait for code
-        if config.get("redirect_url"):
-            driver.get(config["redirect_url"])
-            WebDriverWait(driver, 30).until(
-                lambda d: "code=" in d.current_url or "error=" in d.current_url)
-
-        current_url = driver.current_url
-        if "error=" in current_url and "code=" not in current_url:
-            error_match = re.search(r"error_description=([^&]+)", current_url)
-            error_desc = error_match.group(1).replace("+", " ") if error_match else "Unknown OAuth error"
-            state["status"] = "error"
-            state["error"] = f"OAuth error: {error_desc}"
-            log(state["error"], "err")
-            return
-        if "code=" not in current_url:
-            state["status"] = "error"
-            state["error"] = f"No auth code found in URL: {current_url[:120]}"
-            log(state["error"], "err")
-            return
-        code_match = re.search(r"[?&]code=([^&]+)", current_url)
-        if not code_match:
-            state["status"] = "error"
-            state["error"] = f"Could not extract auth code from URL: {current_url[:120]}"
-            log(state["error"], "err")
-            return
-        log("Authorization code received.", "ok")
-        log("Exchanging code for token...")
-        data = {"grant_type": "authorization_code", "code": code_match.group(1),
-                "redirect_uri": config["redirect_url_final"],
-                "client_id": config["client_id"], "client_secret": config["client_secret"]}
-        response = req_lib.post(config["token_url"], data=data, timeout=15)
-        if response.status_code == 200:
-            tokens = response.json()
-            state["refresh_token"] = tokens.get("refresh_token", "N/A")
-            state["access_token"] = tokens.get("access_token", "N/A")
-            state["status"] = "success"
-            log("Token generated successfully.", "ok")
-            update_ha_sensor(brand)
-        else:
-            state["status"] = "error"
-            state["error"] = f"API error {response.status_code}: {response.text[:200]}"
-            log(state["error"], "err")
-    except TimeoutException:
-        state["status"] = "error"
-        state["error"] = "Timeout — login was not completed within 5 minutes."
-        log(state["error"], "err")
-    except Exception as e:
-        state["status"] = "error"
-        state["error"] = str(e)
-        log(f"Error: {e}", "err")
-    finally:
-        if driver:
-            try: driver.quit()
-            except: pass
-        log("Browser closed.")
-
 # ── Routes ──────────────────────────────────────────────────
 
 @app.route("/")
@@ -468,7 +284,7 @@ def index():
             </select>
         </div>"""
 
-        if is_eu and HAS_CURL_CFFI:
+        if is_eu:
             # EU brands: simple credentials form, headless login
             return render(f"""
 <div class="card">
@@ -534,82 +350,11 @@ document.getElementById('login-form').addEventListener('submit', function(e) {{
     </form>
 </div>""")
 
-    elif s == "waiting_login":
-        env_user = os.environ.get("BLUELINK_USERNAME", "")
-        env_pass = os.environ.get("BLUELINK_PASSWORD", "")
-        is_eu = brand in ("eu_kia", "eu_hyundai")
-        browser_html = "" if is_eu else """
-    <hr class="divider">
-    <div class="section-label">Remote browser</div>
-    <iframe src="/novnc" class="vnc-frame" id="vnc"></iframe>"""
-        fill_only_btn = "" if is_eu else '<button class="btn btn-secondary" onclick="doFillOnly()">Fill only</button>'
-        hint_text = "Enter your Bluelink credentials and click Login." if is_eu else \
-            "Fills the credentials into the browser below and optionally clicks Sign In. You may still need to solve a CAPTCHA manually."
-        return render(f"""
-<div class="card">
-    <div class="card-title">Sign in to {bt} Bluelink</div>
-    <div class="notice notice-warning">
-        Waiting for login. Use your {bt} Bluelink credentials (same as the mobile app).
-        The session will time out after 5 minutes.
-    </div>
-    <div class="log" id="log-box">{format_log()}</div>
-    <hr class="divider">
-    <div class="section-label">Credentials</div>
-    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
-        <input type="text" id="login-user" placeholder="E-Mail / Username"
-               value="{html_lib.escape(env_user)}" style="width:100%;">
-        <input type="password" id="login-pass" placeholder="Password"
-               value="{html_lib.escape(env_pass)}" style="width:100%;">
-        <div class="actions">
-            <button class="btn btn-primary" onclick="doFillAndLogin()" id="fill-btn">Login</button>
-            {fill_only_btn}
-        </div>
-    </div>
-    <p class="hint">{hint_text}</p>
-    <div id="fill-result"></div>
-    {browser_html}
-</div>
-<script>
-function doFillAndLogin() {{ _doFill(true); }}
-function doFillOnly() {{ _doFill(false); }}
-function _doFill(clickLogin) {{
-    var btn = document.getElementById('fill-btn');
-    var res = document.getElementById('fill-result');
-    btn.disabled = true; btn.textContent = 'Filling...';
-    res.innerHTML = '';
-    fetch('/api/autologin', {{
-        method: 'POST', headers: {{'Content-Type': 'application/json'}},
-        body: JSON.stringify({{
-            username: document.getElementById('login-user').value,
-            password: document.getElementById('login-pass').value,
-            click_login: clickLogin
-        }})
-    }}).then(function(r){{ return r.json(); }}).then(function(d) {{
-        btn.disabled = false; btn.textContent = 'Fill & Login';
-        if (d.ok) {{
-            res.innerHTML = '<div class="notice notice-success">' + d.message + '</div>';
-        }} else {{
-            res.innerHTML = '<div class="notice notice-error">' + d.error + '</div>';
-        }}
-    }}).catch(function(e) {{
-        btn.disabled = false; btn.textContent = 'Fill & Login';
-        res.innerHTML = '<div class="notice notice-error">Request failed</div>';
-    }});
-}}
-(function poll() {{
-    fetch('/api/status').then(function(r){{ return r.json(); }}).then(function(d) {{
-        document.getElementById('log-box').innerHTML = d.log;
-        if (d.status !== 'waiting_login') location.reload();
-        else setTimeout(poll, 3000);
-    }}).catch(function(){{ setTimeout(poll, 3000); }});
-}})();
-</script>""")
-
     elif s == "processing":
         return render(f"""
 <div class="card">
     <div class="card-title">Processing</div>
-    <div class="notice notice-info">Login successful. Retrieving token...</div>
+    <div class="notice notice-info">Generating token...</div>
     <div class="log" id="log-box">{format_log()}</div>
 </div>
 <script>
@@ -812,35 +557,11 @@ function evccReset() {{
 
     return render('<div class="card">Unknown state</div>')
 
-@app.route("/start", methods=["POST"])
-def start():
-    chosen_brand = request.form.get("brand", "").lower()
-    chosen_brand = BRAND_ALIASES.get(chosen_brand, chosen_brand)
-    if chosen_brand in BRAND_CONFIG:
-        state["brand_override"] = chosen_brand
-    else:
-        state["brand_override"] = None
-    state.update({"status": "waiting_login", "refresh_token": None,
-                  "access_token": None, "error": None, "test_result": "", "log": []})
-    threading.Thread(target=get_token_thread, args=(get_brand(),), daemon=True).start()
-    return render("""
-<div class="card">
-    <div class="notice notice-info">Starting browser... redirecting shortly.</div>
-</div>
-<script>setTimeout(function(){ location.href = '/'; }, 2000);</script>""")
-
 @app.route("/reset", methods=["POST"])
 def reset():
     state.update({"status": "idle", "refresh_token": None, "access_token": None,
                   "error": None, "test_result": "", "log": [], "brand_override": None})
     return flask_redirect("/")
-
-@app.route("/novnc")
-def novnc():
-    host = request.host.split(":")[0]
-    return (f'<!DOCTYPE html><html><head>'
-            f'<meta http-equiv="refresh" content="0;url=http://{host}:6080/vnc.html?autoconnect=true&resize=scale">'
-            f'</head><body></body></html>')
 
 @app.route("/test", methods=["POST"])
 def test_token():
@@ -850,7 +571,6 @@ def test_token():
     if not refresh_token:
         state["test_result"] = "No refresh token available."
         return flask_redirect("/")
-    # The most reliable test: use the refresh token to get a new access token
     try:
         data = {"grant_type": "refresh_token", "refresh_token": refresh_token,
                 "client_id": config["client_id"], "client_secret": config["client_secret"]}
@@ -868,19 +588,6 @@ def test_token():
         state["test_result"] = str(e)
     return flask_redirect("/")
 
-@app.route("/api/type", methods=["POST"])
-def api_type():
-    data = request.get_json()
-    text = data.get("text", "")
-    if not text:
-        return jsonify({"ok": False, "error": "No text"})
-    try:
-        subprocess.run(["xdotool", "type", "--clearmodifiers", "--delay", "12", text],
-                       env={**os.environ, "DISPLAY": ":99"}, timeout=10)
-        return jsonify({"ok": True})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)})
-
 @app.route("/api/quicklogin", methods=["POST"])
 def api_quicklogin():
     """Direct headless login for EU brands — no browser, no Start button needed."""
@@ -890,8 +597,6 @@ def api_quicklogin():
     chosen_brand = data.get("brand", "").lower()
     if not username or not password:
         return jsonify({"ok": False, "error": "Username and password required"})
-    if not HAS_CURL_CFFI:
-        return jsonify({"ok": False, "error": "curl_cffi not available"})
 
     # Use brand from request, fall back to get_brand()
     chosen_brand = BRAND_ALIASES.get(chosen_brand, chosen_brand)
@@ -916,60 +621,6 @@ def api_quicklogin():
     except Exception as e:
         state["status"] = "idle"
         return jsonify({"ok": False, "error": str(e)})
-
-@app.route("/api/autologin", methods=["POST"])
-def api_autologin():
-    """Fill username + password into the browser and optionally click login."""
-    data = request.get_json()
-    username = data.get("username", "")
-    password = data.get("password", "")
-    click_login = data.get("click_login", False)
-    if not username or not password:
-        return jsonify({"ok": False, "error": "Username and password required"})
-
-    # Try headless login first (no browser needed)
-    if HAS_CURL_CFFI and click_login:
-        brand = get_brand()
-        config = BRAND_CONFIG[brand]
-        # Only EU Kia/Hyundai support headless login for now
-        if brand in ("eu_kia", "eu_hyundai"):
-            try:
-                result = _headless_login_eu(username, password, config)
-                if result.get("ok"):
-                    return jsonify(result)
-                else:
-                    log(f"Headless login failed: {result.get('error', 'unknown')}, falling back to browser.", "warn")
-            except Exception as e:
-                log(f"Headless login error: {e}, falling back to browser.", "warn")
-
-    # Fallback: xdotool browser fill
-    xenv = {**os.environ, "DISPLAY": ":99"}
-    try:
-        subprocess.run(["xdotool", "key", "--clearmodifiers", "Escape"], env=xenv, timeout=5)
-        time.sleep(0.3)
-        subprocess.run(["xdotool", "key", "--clearmodifiers", "F6"], env=xenv, timeout=5)
-        time.sleep(0.2)
-        for _ in range(3):
-            subprocess.run(["xdotool", "key", "--clearmodifiers", "Tab"], env=xenv, timeout=5)
-            time.sleep(0.1)
-        subprocess.run(["xdotool", "key", "--clearmodifiers", "ctrl+a"], env=xenv, timeout=5)
-        time.sleep(0.1)
-        subprocess.run(["xdotool", "type", "--clearmodifiers", "--delay", "12", username],
-                       env=xenv, timeout=10)
-        time.sleep(0.3)
-        subprocess.run(["xdotool", "key", "--clearmodifiers", "Tab"], env=xenv, timeout=5)
-        time.sleep(0.2)
-        subprocess.run(["xdotool", "type", "--clearmodifiers", "--delay", "12", password],
-                       env=xenv, timeout=10)
-        time.sleep(0.3)
-        msg = "Credentials filled."
-        if click_login:
-            subprocess.run(["xdotool", "key", "--clearmodifiers", "Return"], env=xenv, timeout=5)
-            msg = "Credentials filled and login submitted."
-        return jsonify({"ok": True, "message": msg})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)})
-
 
 def _headless_login_eu(username, password, config):
     """
@@ -1225,20 +876,14 @@ def _auto_start_login():
 
     if not username or not password:
         return
-    if not HAS_CURL_CFFI:
-        return
     if brand_env not in ("eu_kia", "eu_hyundai") and brand_env != "auto":
         return
 
-    # Resolve brand
     brand = brand_env if brand_env in BRAND_CONFIG else "eu_kia"
     config = BRAND_CONFIG[brand]
 
-    if brand not in ("eu_kia", "eu_hyundai"):
-        return
-
     print(f"[AUTO] Credentials configured — starting headless login for {brand}...")
-    state["status"] = "waiting_login"
+    state["status"] = "processing"
     state["log"] = []
     log("Auto-start: credentials found, trying headless login...")
 
@@ -1247,8 +892,8 @@ def _auto_start_login():
         if result.get("ok"):
             log("Auto-start: login successful!", "ok")
         else:
-            log(f"Auto-start: headless login failed: {result.get('error', 'unknown')}", "warn")
-            log("Open the web UI to try again or use the browser fallback.", "warn")
+            log(f"Auto-start: failed: {result.get('error', 'unknown')}", "warn")
+            log("Open the web UI to try again.", "warn")
             state["status"] = "idle"
     except Exception as e:
         log(f"Auto-start: error: {e}", "warn")
