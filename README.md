@@ -203,7 +203,11 @@ Use the refresh token as the **password** (not your Bluelink password) when conf
 
 Got questions or issues? [Open an issue on GitHub.](https://github.com/TMA84/bluelink-refresh-token/issues)
 
-If this project is useful to you, consider [sponsoring](https://github.com/sponsors/TMA84).
+### ☕ Sponsor this project
+
+This project is developed and maintained in my free time. If it saves you time or helps you get your Kia/Hyundai connected, I'd appreciate your support:
+
+<a href="https://github.com/sponsors/TMA84"><img src="https://img.shields.io/badge/Sponsor_on_GitHub-♥-ea4aaa?style=for-the-badge&logo=github" alt="Sponsor on GitHub"></a>
 
 ## Credits
 
