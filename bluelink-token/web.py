@@ -591,6 +591,14 @@ def index():
     elif s == "waiting_login":
         env_user = os.environ.get("BLUELINK_USERNAME", "")
         env_pass = os.environ.get("BLUELINK_PASSWORD", "")
+        is_eu = brand in ("eu_kia", "eu_hyundai")
+        browser_html = "" if is_eu else """
+    <hr class="divider">
+    <div class="section-label">Remote browser</div>
+    <iframe src="/novnc" class="vnc-frame" id="vnc"></iframe>"""
+        fill_only_btn = "" if is_eu else '<button class="btn btn-secondary" onclick="doFillOnly()">Fill only</button>'
+        hint_text = "Enter your Bluelink credentials and click Login." if is_eu else \
+            "Fills the credentials into the browser below and optionally clicks Sign In. You may still need to solve a CAPTCHA manually."
         return render(f"""
 <div class="card">
     <div class="card-title">Sign in to {bt} Bluelink</div>
@@ -600,23 +608,20 @@ def index():
     </div>
     <div class="log" id="log-box">{format_log()}</div>
     <hr class="divider">
-    <div class="section-label">Auto-fill credentials</div>
+    <div class="section-label">Credentials</div>
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
         <input type="text" id="login-user" placeholder="E-Mail / Username"
                value="{html_lib.escape(env_user)}" style="width:100%;">
         <input type="password" id="login-pass" placeholder="Password"
                value="{html_lib.escape(env_pass)}" style="width:100%;">
         <div class="actions">
-            <button class="btn btn-primary" onclick="doFillAndLogin()" id="fill-btn">Fill &amp; Login</button>
-            <button class="btn btn-secondary" onclick="doFillOnly()">Fill only</button>
+            <button class="btn btn-primary" onclick="doFillAndLogin()" id="fill-btn">Login</button>
+            {fill_only_btn}
         </div>
     </div>
-    <p class="hint">Fills the credentials into the browser below and optionally clicks Sign In.
-        You may still need to solve a CAPTCHA manually.</p>
+    <p class="hint">{hint_text}</p>
     <div id="fill-result"></div>
-    <hr class="divider">
-    <div class="section-label">Remote browser</div>
-    <iframe src="/novnc" class="vnc-frame" id="vnc"></iframe>
+    {browser_html}
 </div>
 <script>
 function doFillAndLogin() {{ _doFill(true); }}
