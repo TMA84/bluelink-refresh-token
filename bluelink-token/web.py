@@ -764,6 +764,7 @@ def evcc_vehicles():
         return jsonify({"ok": False, "error": "No evcc URL provided"})
     try:
         session = req_lib.Session()
+        session.verify = False
         # Check if auth is required
         auth_resp = session.get(f"{evcc_url}/api/auth/status", timeout=10)
         needs_auth = auth_resp.status_code == 200 and auth_resp.text.strip() == "false"
@@ -811,6 +812,7 @@ def evcc_update():
         return jsonify({"ok": False, "error": "Missing parameters"})
     try:
         session = req_lib.Session()
+        session.verify = False
         # Check if auth is required and login
         auth_resp = session.get(f"{evcc_url}/api/auth/status", timeout=10)
         needs_auth = auth_resp.status_code == 200 and auth_resp.text.strip() == "false"
@@ -880,6 +882,7 @@ def evcc_restart():
     # Fallback: evcc shutdown endpoint (for Docker/native installs)
     try:
         session = req_lib.Session()
+        session.verify = False
         auth_resp = session.get(f"{evcc_url}/api/auth/status", timeout=10)
         needs_auth = auth_resp.status_code == 200 and auth_resp.text.strip() == "false"
         if needs_auth and password:
@@ -897,14 +900,18 @@ def evcc_restart():
 
 def _auto_start_login():
     """Auto-start headless login if credentials are configured via env vars."""
+    import sys
     username = os.environ.get("BLUELINK_USERNAME", "")
     password = os.environ.get("BLUELINK_PASSWORD", "")
     brand_env = os.environ.get("BRAND", "auto").lower()
     brand_env = BRAND_ALIASES.get(brand_env, brand_env)
+    print(f"[AUTO] username={bool(username)}, password={bool(password)}, brand={brand_env}", file=sys.stderr, flush=True)
 
     if not username or not password:
+        print("[AUTO] No credentials, skipping", file=sys.stderr, flush=True)
         return
     if brand_env not in ("eu_kia", "eu_hyundai") and brand_env != "auto":
+        print(f"[AUTO] Brand {brand_env} not supported, skipping", file=sys.stderr, flush=True)
         return
 
     brand = brand_env if brand_env in BRAND_CONFIG else "eu_kia"
@@ -938,6 +945,8 @@ def _auto_evcc_transfer(evcc_url, evcc_password):
     try:
         log(f"Auto-start: connecting to evcc ({evcc_url})...")
         session = req_lib.Session()
+        session.verify = False
+        session.verify = False  # Allow self-signed certs
         # Login if needed
         auth_resp = session.get(f"{evcc_url}/api/auth/status", timeout=10)
         if auth_resp.status_code == 200 and auth_resp.text.strip() == "false":
@@ -949,8 +958,12 @@ def _auto_evcc_transfer(evcc_url, evcc_password):
         if resp.status_code != 200:
             log(f"Auto-start: could not fetch evcc vehicles ({resp.status_code})", "warn")
             return
-        vehicles = [v for v in resp.json().get("result", [])
-                    if any(t in v.get("config", {}).get("type", "").lower()
+        data = resp.json()
+        all_vehicles = data.get("result", data) if isinstance(data, dict) else data
+        if not isinstance(all_vehicles, list):
+            all_vehicles = []
+        vehicles = [v for v in all_vehicles
+                    if isinstance(v, dict) and any(t in str(v.get("config", v)).lower()
                            for t in ("hyundai", "kia", "bluelink"))]
         if not vehicles:
             log("Auto-start: no Hyundai/Kia vehicles found in evcc", "warn")
@@ -966,9 +979,11 @@ def _auto_evcc_transfer(evcc_url, evcc_password):
                 if cfg_resp.status_code != 200:
                     log(f"Auto-start: could not fetch config for {title}", "warn")
                     continue
-                payload = {"type": "template"}
-                payload.update(cfg_resp.json().get("result", {}).get("config", {}))
-                payload["password"] = token
+                vehicle_data = cfg_resp.json()
+                cfg = vehicle_data.get("config", {})
+                cfg["password"] = token
+                payload = {"type": vehicle_data.get("type", "template")}
+                payload.update(cfg)
                 # Test + apply
                 session.post(f"{evcc_url}/api/config/test/vehicle/merge/{vid}",
                              json=payload, timeout=30)
@@ -977,7 +992,7 @@ def _auto_evcc_transfer(evcc_url, evcc_password):
                 if resp.status_code == 200:
                     log(f"Auto-start: token sent to {title}", "ok")
                 else:
-                    log(f"Auto-start: failed to update {title} ({resp.status_code})", "warn")
+                    log(f"Auto-start: failed to update {title} ({resp.status_code}): {resp.text[:200]}", "warn")
             except Exception as e:
                 log(f"Auto-start: error updating {title}: {e}", "warn")
         # Restart evcc
@@ -1001,8 +1016,17 @@ def _auto_evcc_transfer(evcc_url, evcc_password):
     except Exception as e:
         log(f"Auto-start: evcc transfer error: {e}", "warn")
 
-# Auto-start on import (when gunicorn loads the app)
-threading.Thread(target=_auto_start_login, daemon=True).start()
+# Auto-start on module load
+def _schedule_auto_start():
+    """Schedule auto-start with a small delay to let the server finish startup."""
+    import sys
+    print("[AUTO] Auto-start thread started, waiting 3s...", file=sys.stderr, flush=True)
+    time.sleep(3)
+    print("[AUTO] Running auto-start login...", file=sys.stderr, flush=True)
+    _auto_start_login()
+
+threading.Thread(target=_schedule_auto_start, daemon=True).start()
+print("[AUTO] Auto-start thread scheduled", flush=True)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=9876)
