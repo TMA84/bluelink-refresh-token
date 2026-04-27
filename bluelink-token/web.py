@@ -330,14 +330,14 @@ function generateAll() {{
     var btn = document.getElementById('ql-btn');
     btn.disabled = true; btn.textContent = 'Generating...';
     document.getElementById('ql-result').innerHTML = '<div class="notice notice-info">Generating tokens for all vehicles...</div>';
-    fetch(bp('/api/quicklogin', {{
+    fetch(bp('/api/quicklogin'), {{
         method: 'POST', headers: {{'Content-Type': 'application/json'}},
         body: JSON.stringify({{mode: 'all'}})
     }}).then(function() {{ location.href = bp("/"); }}).catch(function() {{ location.href = bp("/"); }});
 }}
 function generateSingle() {{
     document.getElementById('ql-result').innerHTML = '<div class="notice notice-info">Generating token...</div>';
-    fetch(bp('/api/quicklogin', {{
+    fetch(bp('/api/quicklogin'), {{
         method: 'POST', headers: {{'Content-Type': 'application/json'}},
         body: JSON.stringify({{
             username: document.getElementById('man-user').value,
@@ -392,7 +392,7 @@ function generateAll() {{
     var btn = document.getElementById('ql-btn');
     btn.disabled = true; btn.textContent = 'Generating...';
     document.getElementById('ql-result').innerHTML = '<div class="notice notice-info">Generating tokens...</div>';
-    fetch(bp('/api/quicklogin', {{
+    fetch(bp('/api/quicklogin'), {{
         method: 'POST', headers: {{'Content-Type': 'application/json'}},
         body: JSON.stringify({{mode: 'list', vehicles: vehicles}})
     }}).then(function() {{ location.href = bp("/"); }}).catch(function() {{ location.href = bp("/"); }});
@@ -409,7 +409,7 @@ addVehicle(); // Start with one vehicle form
 </div>
 <script>
 (function poll() {{
-    fetch(bp('/api/status').then(function(r){{ return r.json(); }}).then(function(d) {{
+    fetch(bp('/api/status')).then(function(r){{ return r.json(); }}).then(function(d) {{
         document.getElementById('log-box').innerHTML = d.log;
         if (d.status !== 'processing') location.href = bp("/");
         else setTimeout(poll, 2000);
@@ -522,7 +522,7 @@ function evccLoadVehicles() {{
     var resultDiv = document.getElementById('evcc-result');
     if (btn) {{ btn.textContent = 'Connecting...'; btn.disabled = true; }}
     resultDiv.innerHTML = '';
-    fetch(bp('/api/evcc/vehicles', {{
+    fetch(bp('/api/evcc/vehicles'), {{
         method: 'POST', headers: {{'Content-Type': 'application/json'}},
         body: JSON.stringify({{url: url, password: pw}})
     }}).then(function(r) {{ return r.json(); }}).then(function(d) {{
@@ -564,7 +564,7 @@ function evccSendToVehicles(ids) {{
     var total = ids.length, done = 0, errors = [];
     resultDiv.innerHTML = '<div class="notice notice-info">Sending token to ' + total + ' vehicle(s)...</div>';
     ids.forEach(function(vid) {{
-        fetch(bp('/api/evcc/update', {{
+        fetch(bp('/api/evcc/update'), {{
             method: 'POST', headers: {{'Content-Type': 'application/json'}},
             body: JSON.stringify({{url: url, password: pw, vehicle_id: vid}})
         }}).then(function(r) {{ return r.json(); }}).then(function(d) {{
@@ -591,7 +591,7 @@ function evccRestart() {{
     var url = document.getElementById('evcc-url').value;
     var pw = document.getElementById('evcc-password').value;
     var resultDiv = document.getElementById('evcc-result');
-    fetch(bp('/api/evcc/restart', {{
+    fetch(bp('/api/evcc/restart'), {{
         method: 'POST', headers: {{'Content-Type': 'application/json'}},
         body: JSON.stringify({{url: url, password: pw}})
     }}).then(function(r) {{ return r.json(); }}).then(function(d) {{
@@ -611,7 +611,7 @@ function evccDone(msg) {{
     }}, 1000);
 }}
 function evccReset() {{
-    fetch(bp('/reset', {{ method: 'POST' }}).then(function() {{ location.href = bp('/'); }});
+    fetch(bp('/reset'), {{ method: 'POST' }}).then(function() {{ location.href = bp('/'); }});
 }}
 {"// Auto-connect if evcc is configured\nwindow.addEventListener('load', function() { document.getElementById('evcc-result').innerHTML = '<div class=\"notice notice-info\">Connecting to evcc...</div>'; evccLoadVehicles(); });" if evcc_configured else ""}
 </script>""")
