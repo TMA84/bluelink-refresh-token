@@ -203,7 +203,7 @@ def render(content):
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
 <style>{STYLE}</style></head><body>
-<script>var BASE_PATH = '{ingress_path}';</script>
+<script>var BASE_PATH = '{ingress_path}'; function bp(p){{return BASE_PATH+p;}}</script>
 <div class="header"><div class="header-inner">
 <h1>Bluelink Token Generator</h1>
 <span class="brand">{brand_label}</span>
@@ -472,9 +472,12 @@ addVehicle(); // Start with one vehicle form
 <script>
 (function poll() {{
     fetch(bp('/api/status')).then(function(r){{ return r.json(); }}).then(function(d) {{
-        document.getElementById('log-box').innerHTML = d.log;
-        if (d.status !== 'processing') location.href = bp("/");
-        else setTimeout(poll, 2000);
+        if (d.log) document.getElementById('log-box').innerHTML = d.log;
+        if (d.status !== 'processing') {{
+            setTimeout(function(){{ window.location = bp('/'); }}, 500);
+        }} else {{
+            setTimeout(poll, 1500);
+        }}
     }}).catch(function(){{ setTimeout(poll, 2000); }});
 }})();
 </script>""")
