@@ -586,7 +586,6 @@ addVehicle(); // Start with one vehicle form
         <form method="POST" action="" onsubmit="event.preventDefault();fetch(bp('/test'),{{method:'POST'}}).then(function(){{location.href=bp('/')}})" style="margin:0;">
             <button type="submit" class="btn btn-secondary">Verify token</button>
         </form>
-        <button class="btn btn-primary" onclick="fetch(bp('/api/quicklogin'),{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{mode:'all',force:true}})}}).then(function(){{location.href=bp('/')}})">Force Renew</button>
         <form method="POST" action="" onsubmit="event.preventDefault();fetch(bp('/reset'),{{method:'POST'}}).then(function(){{location.href=bp('/')}})" style="margin:0;">
             <button type="submit" class="btn btn-danger">Reset</button>
         </form>
