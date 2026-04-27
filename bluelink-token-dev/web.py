@@ -586,6 +586,7 @@ addVehicle(); // Start with one vehicle form
         <form method="POST" action="" onsubmit="event.preventDefault();fetch(bp('/test'),{{method:'POST'}}).then(function(){{location.href=bp('/')}})" style="margin:0;">
             <button type="submit" class="btn btn-secondary">Verify token</button>
         </form>
+        <button class="btn btn-primary" onclick="fetch(bp('/api/quicklogin'),{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{mode:'all',force:true}})}}).then(function(){{location.href=bp('/')}})">Force Renew</button>
         <form method="POST" action="" onsubmit="event.preventDefault();fetch(bp('/reset'),{{method:'POST'}}).then(function(){{location.href=bp('/')}})" style="margin:0;">
             <button type="submit" class="btn btn-danger">Reset</button>
         </form>
@@ -1206,7 +1207,19 @@ def _auto_evcc_transfer(evcc_url, evcc_password):
             log("Auto-start: no Hyundai/Kia vehicles found in evcc", "warn")
             return
         log(f"Auto-start: found {len(vehicles)} vehicle(s) in evcc", "ok")
-        token = state["refresh_token"]
+        # Build a map of brand → token from generated vehicles
+        token_map = {}
+        for sv in state.get("vehicles", []):
+            if sv.get("status") == "ok" and sv.get("refresh_token"):
+                # Map both "kia" and "hyundai" to match evcc template names
+                brand_name = sv.get("brand_name", "").lower()
+                token_map[brand_name] = sv["refresh_token"]
+        if not token_map:
+            # Fallback: use the last generated token for all
+            token_map["kia"] = state.get("refresh_token", "")
+            token_map["hyundai"] = state.get("refresh_token", "")
+        log(f"Auto-start: tokens available for: {', '.join(token_map.keys())}")
+
         for v in vehicles:
             vid = v["id"]
             title = v.get("config", {}).get("title", f"Vehicle {vid}")
@@ -1218,6 +1231,12 @@ def _auto_evcc_transfer(evcc_url, evcc_password):
                     continue
                 vehicle_data = cfg_resp.json()
                 cfg = vehicle_data.get("config", {})
+                # Find the right token for this vehicle's brand
+                tmpl = cfg.get("template", "").lower()
+                token = token_map.get(tmpl, token_map.get("kia", token_map.get("hyundai", "")))
+                if not token:
+                    log(f"Auto-start: no token available for {title} (template: {tmpl})", "warn")
+                    continue
                 cfg["password"] = token
                 payload = {"type": vehicle_data.get("type", "template")}
                 payload.update(cfg)
