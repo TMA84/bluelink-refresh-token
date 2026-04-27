@@ -22,12 +22,34 @@
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `brand` | `auto`, `eu_kia`, or `eu_hyundai` | `auto` |
+| `vehicles` | List of vehicles with brand/username/password | `[]` |
 | `country` | Country code for EU Hyundai (e.g. `DE`, `FR`, `PL`) | `DE` |
-| `username` | Bluelink email/username | |
-| `password` | Bluelink password (8-20 characters) | |
 | `evcc_url` | evcc instance URL (optional) | |
 | `evcc_password` | evcc admin password (optional) | |
+
+### Vehicle Configuration
+
+Each vehicle entry:
+
+| Field | Description |
+|-------|-------------|
+| `brand` | `eu_kia` or `eu_hyundai` |
+| `username` | Bluelink email/username |
+| `password` | Bluelink password (8-20 characters) |
+
+Example:
+```yaml
+vehicles:
+  - brand: eu_kia
+    username: kia@email.com
+    password: kiapassword
+  - brand: eu_hyundai
+    username: hyundai@email.com
+    password: hyundaipassword
+country: DE
+evcc_url: http://192.168.1.100:7070
+evcc_password: adminpass
+```
 
 > **Password requirements:** 8–20 characters, at least one uppercase letter, one lowercase letter, one digit, and one special character.
 

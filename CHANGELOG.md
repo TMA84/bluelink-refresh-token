@@ -1,5 +1,19 @@
 # Changelog
 
+## 6.0.0
+
+### Neu
+- **Multi-Vehicle Support** — mehrere Fahrzeuge (Kia + Hyundai) gleichzeitig konfigurierbar
+  - HA-Addon: `vehicles` Liste in der Config mit Brand/Username/Password pro Fahrzeug
+  - Docker: `VEHICLES_JSON` Env-Var oder dynamisches Formular in der Web-UI
+  - Alle Tokens werden beim Start automatisch generiert und an evcc übertragen
+- **HA Ingress** — Web-UI direkt im Home Assistant Interface erreichbar (kein separater Port nötig)
+- **Dynamisches UI-Formular** — Vehicles in der Web-UI hinzufügen/entfernen ohne Vorkonfiguration
+- **Rückwärtskompatibel** — alte Config mit einzelnem `BRAND`/`BLUELINK_USERNAME`/`BLUELINK_PASSWORD` funktioniert weiterhin
+
+### Entfernt
+- Alte Single-Brand Config (`brand`/`username`/`password` Felder) aus dem HA-Schema (Env-Vars funktionieren weiterhin)
+
 ## 5.2.0
 
 ### Neu

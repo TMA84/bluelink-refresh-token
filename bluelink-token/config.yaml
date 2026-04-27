@@ -1,6 +1,6 @@
 name: "Bluelink Token Generator"
 description: "Generate Hyundai/Kia Bluelink refresh tokens for evcc and Home Assistant"
-version: "5.2.1"
+version: "6.0.0"
 slug: "bluelink_token"
 image: "ghcr.io/tma84/bluelink-token"
 arch:
@@ -13,14 +13,21 @@ hassio_api: true
 homeassistant_api: true
 ports:
   9876/tcp: 9876
+ingress: true
+ingress_port: 9876
+panel_icon: "mdi:car-key"
+panel_title: "Bluelink Token"
 webui: "http://[HOST]:[PORT:9876]/"
 options:
-  brand: "auto"
+  vehicles: []
   country: "DE"
+  evcc_url: ""
+  evcc_password: ""
 schema:
-  brand: list(auto|hyundai|kia|eu_hyundai|eu_kia)
+  vehicles:
+    - brand: list(eu_kia|eu_hyundai)
+      username: str
+      password: password
   country: str?
-  username: str?
-  password: password?
   evcc_url: str?
   evcc_password: password?

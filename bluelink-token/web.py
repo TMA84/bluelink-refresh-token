@@ -32,11 +32,39 @@ except Exception:
     pass
 
 state = {
-    "status": "idle", "refresh_token": None, "access_token": None,
-    "error": None, "test_result": "", "log": [], "brand_override": None,
+    "status": "idle",  # idle, processing, success, error
+    "vehicles": [],    # list of {brand, username, refresh_token, access_token, status, error}
+    "error": None,
+    "log": [],
+    "brand_override": None,
+    # Legacy single-vehicle compat
+    "refresh_token": None, "access_token": None, "test_result": "",
 }
 
 _MOBILE_UA = "Mozilla/5.0 (Linux; Android 4.1.1; Galaxy Nexus Build/JRO03C) AppleWebKit/535.19 (KHTML, like Gecko) Chrome/18.0.1025.166 Mobile Safari/535.19_CCS_APP_AOS"
+
+
+def _get_vehicles_config():
+    """Get vehicles from VEHICLES_JSON env var, or fall back to single BRAND/USERNAME/PASSWORD."""
+    vehicles = []
+    # Try VEHICLES_JSON first (HA addon config)
+    vj = os.environ.get("VEHICLES_JSON", "").strip()
+    if vj and vj != "[]":
+        try:
+            vehicles = json.loads(vj)
+        except Exception:
+            pass
+    # Fallback: single vehicle from env vars (Docker standalone)
+    if not vehicles:
+        brand = os.environ.get("BRAND", "auto").lower()
+        username = os.environ.get("BLUELINK_USERNAME", "")
+        password = os.environ.get("BLUELINK_PASSWORD", "")
+        if username and password:
+            brand = BRAND_ALIASES.get(brand, brand)
+            if brand == "auto":
+                brand = "eu_kia"
+            vehicles = [{"brand": brand, "username": username, "password": password}]
+    return vehicles
 
 BRAND_CONFIG = {
     # ── Europe ──────────────────────────────────────────────
@@ -151,6 +179,7 @@ select:focus, input[type="text"]:focus, input[type="password"]:focus {
 """
 
 SCRIPT = """
+function bp(path) { return (window.BASE_PATH || '') + path; }
 function copyToken(id) {
     var text = document.getElementById(id).innerText;
     navigator.clipboard.writeText(text).then(function() {
@@ -166,12 +195,15 @@ def render(content):
     brand = get_brand()
     config = BRAND_CONFIG[brand]
     brand_label = f"{config['region_name']} {config['brand_name']}"
+    # Support HA Ingress: X-Ingress-Path header sets the base path
+    ingress_path = request.headers.get("X-Ingress-Path", "")
     return f"""<!DOCTYPE html>
 <html lang="de"><head>
 <title>Bluelink Token Generator</title>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
 <style>{STYLE}</style></head><body>
+<script>var BASE_PATH = '{ingress_path}';</script>
 <div class="header"><div class="header-inner">
 <h1>Bluelink Token Generator</h1>
 <span class="brand">{brand_label}</span>
@@ -251,103 +283,122 @@ def index():
     s = state["status"]
 
     if s == "idle":
-        env_user = os.environ.get("BLUELINK_USERNAME", "")
-        env_pass = os.environ.get("BLUELINK_PASSWORD", "")
-        default_brand = os.environ.get("BRAND", "auto").lower()
-        default_brand = BRAND_ALIASES.get(default_brand, default_brand)
-        brand_fixed = default_brand in BRAND_CONFIG
-        is_eu = brand in ("eu_kia", "eu_hyundai")
+        # Build vehicle forms from config or show empty form
+        configured_vehicles = _get_vehicles_config()
+        error_html = f'<div class="notice notice-error">{html_lib.escape(state.get("error", ""))}</div>' if state.get("error") else ""
+        log_html = f'<details open><summary>Log</summary><div class="log">{format_log()}</div></details>' if state.get("log") else ""
 
-        if brand_fixed:
-            brand_html = f'<input type="hidden" name="brand" value="{default_brand}">'
-        else:
-            show_all = True
-            regions = {}
-            for key, cfg in BRAND_CONFIG.items():
-                rn = cfg["region_name"]
-                regions.setdefault(rn, []).append((key, cfg["brand_name"]))
-            options_html = ""
-            for region, entries in regions.items():
-                options_html += f'<optgroup label="{region}">'
-                for key, bname in entries:
-                    sel = "selected" if key == brand else ""
-                    options_html += f'<option value="{key}" {sel}>{bname}</option>'
-                options_html += "</optgroup>"
-            brand_html = f"""
-        <div style="margin-bottom: 16px;">
-            <label for="brand-select" class="section-label">Region &amp; Brand</label>
-            <select id="brand-select" name="brand" style="
-                padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px;
-                font-size: 14px; font-family: inherit; background: var(--surface);
-                cursor: pointer; min-width: 200px;">
-                {options_html}
-            </select>
-        </div>"""
-
-        if is_eu:
-            # EU brands: simple credentials form, headless login
+        vehicles_html = ""
+        if configured_vehicles:
+            for i, v in enumerate(configured_vehicles):
+                b = v.get("brand", "eu_kia")
+                bname = BRAND_CONFIG.get(b, {}).get("brand_name", b)
+                vehicles_html += f"""
+            <div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;">
+                <div style="font-weight:bold;margin-bottom:8px;">{html_lib.escape(bname)} — {html_lib.escape(v.get('username', ''))}</div>
+                <span style="color:var(--text-secondary);font-size:12px;">Configured via {'addon settings' if os.environ.get('VEHICLES_JSON') else 'environment variables'}</span>
+            </div>"""
             return render(f"""
 <div class="card">
-    <div class="card-title">Generate Refresh Token</div>
-    <p style="margin-bottom: 16px; color: var(--text-secondary); font-size: 14px;">
-        Enter your {bt} Bluelink credentials (same as the mobile app).
-        The token will be generated automatically — no browser needed.
+    <div class="card-title">Generate Refresh Tokens</div>
+    <p style="margin-bottom:16px;color:var(--text-secondary);font-size:14px;">
+        {len(configured_vehicles)} vehicle(s) configured. Click to generate tokens for all.
     </p>
-    <form method="POST" action="/api/quicklogin" id="login-form">
-        {brand_html}
-        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
-            <input type="text" name="username" id="ql-user" placeholder="E-Mail / Username"
-                   value="{html_lib.escape(env_user)}" required>
-            <input type="password" name="password" id="ql-pass" placeholder="Password"
-                   value="{html_lib.escape(env_pass)}" required>
-        </div>
-        <button type="submit" class="btn btn-primary" id="ql-btn">Generate Token</button>
-    </form>
-    <div id="ql-result" style="margin-top:12px;">{'<div class="notice notice-error">' + html_lib.escape(state.get("error", "")) + '</div>' if state.get("error") else ''}</div>
-    <div id="ql-log" style="margin-top:12px;">{('<details open><summary>Log</summary><div class="log">' + format_log() + '</div></details>') if state.get('log') else ''}</div>
+    {vehicles_html}
+    <button class="btn btn-primary" id="ql-btn" onclick="generateAll()">Generate All Tokens</button>
+    <div id="ql-result" style="margin-top:12px;">{error_html}</div>
+    <div id="ql-log" style="margin-top:12px;">{log_html}</div>
+</div>
+<hr class="divider">
+<div class="card">
+    <div class="card-title">Manual Login</div>
+    <p style="margin-bottom:12px;color:var(--text-secondary);font-size:14px;">
+        Or generate a token for a single vehicle manually.
+    </p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+        <select id="man-brand" style="padding:10px 14px;border:1px solid var(--border);border-radius:10px;font-size:14px;">
+            <option value="eu_kia">Kia</option>
+            <option value="eu_hyundai">Hyundai</option>
+        </select>
+        <input type="text" id="man-user" placeholder="E-Mail / Username" required>
+        <input type="password" id="man-pass" placeholder="Password" required>
+    </div>
+    <button class="btn btn-secondary" onclick="generateSingle()">Generate Token</button>
 </div>
 <script>
-document.getElementById('login-form').addEventListener('submit', function(e) {{
-    e.preventDefault();
+function generateAll() {{
     var btn = document.getElementById('ql-btn');
-    var res = document.getElementById('ql-result');
     btn.disabled = true; btn.textContent = 'Generating...';
-    res.innerHTML = '<div class="notice notice-info">Logging in and generating token...</div>';
-    fetch('/api/quicklogin', {{
+    document.getElementById('ql-result').innerHTML = '<div class="notice notice-info">Generating tokens for all vehicles...</div>';
+    fetch(bp('/api/quicklogin', {{
+        method: 'POST', headers: {{'Content-Type': 'application/json'}},
+        body: JSON.stringify({{mode: 'all'}})
+    }}).then(function() {{ location.href = bp("/"); }}).catch(function() {{ location.href = bp("/"); }});
+}}
+function generateSingle() {{
+    document.getElementById('ql-result').innerHTML = '<div class="notice notice-info">Generating token...</div>';
+    fetch(bp('/api/quicklogin', {{
         method: 'POST', headers: {{'Content-Type': 'application/json'}},
         body: JSON.stringify({{
-            username: document.getElementById('ql-user').value,
-            password: document.getElementById('ql-pass').value,
-            brand: (document.getElementById('brand-select') || {{}}).value || '{brand}'
+            username: document.getElementById('man-user').value,
+            password: document.getElementById('man-pass').value,
+            brand: document.getElementById('man-brand').value
         }})
-    }}).then(function(r){{ return r.json(); }}).then(function(d) {{
-        if (d.ok) {{
-            location.reload();
-        }} else {{
-            location.reload();
-        }}
-    }}).catch(function() {{
-        location.reload();
-    }});
-}});
+    }}).then(function() {{ location.href = bp("/"); }}).catch(function() {{ location.href = bp("/"); }});
+}}
 </script>""")
         else:
-            # Non-EU or no curl_cffi: browser-based flow
-            creds_note = ("Credentials are configured and will be filled in automatically.") if (env_user and env_pass) else (
-                "You will need to enter your credentials in the browser.")
+            # No vehicles configured — show dynamic multi-vehicle form
             return render(f"""
 <div class="card">
-    <div class="card-title">Generate Refresh Token</div>
-    <p style="margin-bottom: 12px; color: var(--text-secondary); font-size: 14px;">
-        A browser will open in the background. Complete the Bluelink login
-        through the embedded viewer to generate the token.
+    <div class="card-title">Generate Refresh Tokens</div>
+    <p style="margin-bottom:16px;color:var(--text-secondary);font-size:14px;">
+        Add your vehicles and generate tokens. You can add multiple vehicles at once.
     </p>
-    <div class="notice notice-info">{creds_note}</div>
-    <form method="POST" action="/start">
-        {brand_html}
-        <button type="submit" class="btn btn-primary">Start token generation</button>
-    </form>
-</div>""")
+    <div id="vehicle-list"></div>
+    <button class="btn btn-secondary" onclick="addVehicle()" style="margin-bottom:16px;">+ Add Vehicle</button>
+    <br>
+    <button class="btn btn-primary" id="ql-btn" onclick="generateAll()">Generate All Tokens</button>
+    <div id="ql-result" style="margin-top:12px;">{error_html}</div>
+    <div id="ql-log" style="margin-top:12px;">{log_html}</div>
+</div>
+<script>
+var vehicleCount = 0;
+function addVehicle() {{
+    vehicleCount++;
+    var div = document.createElement('div');
+    div.id = 'vehicle-' + vehicleCount;
+    div.style.cssText = 'border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;position:relative;';
+    div.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">' +
+        '<span style="font-weight:bold;font-size:13px;">Vehicle ' + vehicleCount + '</span>' +
+        '<button onclick="this.parentElement.parentElement.remove()" style="background:none;border:none;color:var(--error);cursor:pointer;font-size:16px;">✕</button></div>' +
+        '<div style="display:flex;flex-direction:column;gap:8px;">' +
+        '<select class="v-brand" style="padding:10px 14px;border:1px solid var(--border);border-radius:10px;font-size:14px;">' +
+        '<option value="eu_kia">Kia</option><option value="eu_hyundai">Hyundai</option></select>' +
+        '<input type="text" class="v-user" placeholder="E-Mail / Username" style="padding:10px 14px;border:1px solid var(--border);border-radius:10px;font-size:14px;">' +
+        '<input type="password" class="v-pass" placeholder="Password" style="padding:10px 14px;border:1px solid var(--border);border-radius:10px;font-size:14px;">' +
+        '</div>';
+    document.getElementById('vehicle-list').appendChild(div);
+}}
+function generateAll() {{
+    var vehicles = [];
+    document.querySelectorAll('#vehicle-list > div').forEach(function(div) {{
+        var brand = div.querySelector('.v-brand').value;
+        var user = div.querySelector('.v-user').value;
+        var pass = div.querySelector('.v-pass').value;
+        if (user && pass) vehicles.push({{brand: brand, username: user, password: pass}});
+    }});
+    if (vehicles.length === 0) {{ document.getElementById('ql-result').innerHTML = '<div class="notice notice-warning">Add at least one vehicle.</div>'; return; }}
+    var btn = document.getElementById('ql-btn');
+    btn.disabled = true; btn.textContent = 'Generating...';
+    document.getElementById('ql-result').innerHTML = '<div class="notice notice-info">Generating tokens...</div>';
+    fetch(bp('/api/quicklogin', {{
+        method: 'POST', headers: {{'Content-Type': 'application/json'}},
+        body: JSON.stringify({{mode: 'list', vehicles: vehicles}})
+    }}).then(function() {{ location.href = bp("/"); }}).catch(function() {{ location.href = bp("/"); }});
+}}
+addVehicle(); // Start with one vehicle form
+</script>""")
 
     elif s == "processing":
         return render(f"""
@@ -358,16 +409,44 @@ document.getElementById('login-form').addEventListener('submit', function(e) {{
 </div>
 <script>
 (function poll() {{
-    fetch('/api/status').then(function(r){{ return r.json(); }}).then(function(d) {{
+    fetch(bp('/api/status').then(function(r){{ return r.json(); }}).then(function(d) {{
         document.getElementById('log-box').innerHTML = d.log;
-        if (d.status !== 'processing') location.reload();
+        if (d.status !== 'processing') location.href = bp("/");
         else setTimeout(poll, 2000);
     }}).catch(function(){{ setTimeout(poll, 2000); }});
 }})();
 </script>""")
 
     elif s == "success":
-        rt = html_lib.escape(state.get("refresh_token", ""))
+        # Show tokens for all vehicles
+        vehicles = state.get("vehicles", [])
+        tokens_html = ""
+        if vehicles:
+            for i, v in enumerate(vehicles):
+                if v.get("status") == "ok":
+                    rt = html_lib.escape(v.get("refresh_token", ""))
+                    tokens_html += f"""
+    <div style="margin: 16px 0; border: 1px solid var(--border); border-radius: 10px; padding: 16px;">
+        <div class="token-label">{html_lib.escape(v.get('brand_name', ''))} — {html_lib.escape(v.get('username', '')[:3])}***</div>
+        <div class="token-box" id="refresh-{i}">{rt}</div>
+        <button class="copy-link" data-copy="refresh-{i}" onclick="copyToken('refresh-{i}')">Copy to clipboard</button>
+    </div>"""
+                else:
+                    tokens_html += f"""
+    <div style="margin: 16px 0; border: 1px solid var(--error); border-radius: 10px; padding: 16px;">
+        <div class="token-label" style="color:var(--error);">{html_lib.escape(v.get('brand_name', ''))} — Failed</div>
+        <div style="color:var(--error);font-size:13px;">{html_lib.escape(v.get('error', 'unknown'))}</div>
+    </div>"""
+        else:
+            # Legacy single token
+            rt = html_lib.escape(state.get("refresh_token", ""))
+            tokens_html = f"""
+    <div style="margin: 20px 0;">
+        <div class="token-label">Refresh Token</div>
+        <div class="token-box" id="refresh-0">{rt}</div>
+        <button class="copy-link" data-copy="refresh-0" onclick="copyToken('refresh-0')">Copy to clipboard</button>
+    </div>"""
+
         tr = state.get("test_result", "")
         test_html = ""
         if tr == "ok":
@@ -396,13 +475,9 @@ document.getElementById('login-form').addEventListener('submit', function(e) {{
         return render(f"""
 <div class="card">
     <div class="card-title">Token generated</div>
-    <div class="notice notice-success">The refresh token was generated successfully.</div>
+    <div class="notice notice-success">Token(s) generated successfully.</div>
     {test_html}
-    <div style="margin: 20px 0;">
-        <div class="token-label">Refresh Token</div>
-        <div class="token-box" id="refresh">{rt}</div>
-        <button class="copy-link" data-copy="refresh" onclick="copyToken('refresh')">Copy to clipboard</button>
-    </div>
+    {tokens_html}
     <div class="notice notice-warning">
         This token is valid for 180 days (expires {(datetime.now(timezone.utc) + timedelta(days=TOKEN_EXPIRY_DAYS)).strftime('%B %d, %Y')}). After that you will need to generate a new one.
     </div>
@@ -412,10 +487,10 @@ document.getElementById('login-form').addEventListener('submit', function(e) {{
         when configuring the evcc or Home Assistant integration.
     </p>
     <div class="actions">
-        <form method="POST" action="/test" style="margin:0;">
+        <form method="POST" action="" onsubmit="event.preventDefault();fetch(bp('/test'),{{method:'POST'}}).then(function(){{location.href=bp('/')}})" style="margin:0;">
             <button type="submit" class="btn btn-secondary">Verify token</button>
         </form>
-        <form method="POST" action="/reset" style="margin:0;">
+        <form method="POST" action="" onsubmit="event.preventDefault();fetch(bp('/reset'),{{method:'POST'}}).then(function(){{location.href=bp('/')}})" style="margin:0;">
             <button type="submit" class="btn btn-danger">Reset</button>
         </form>
     </div>
@@ -447,7 +522,7 @@ function evccLoadVehicles() {{
     var resultDiv = document.getElementById('evcc-result');
     if (btn) {{ btn.textContent = 'Connecting...'; btn.disabled = true; }}
     resultDiv.innerHTML = '';
-    fetch('/api/evcc/vehicles', {{
+    fetch(bp('/api/evcc/vehicles', {{
         method: 'POST', headers: {{'Content-Type': 'application/json'}},
         body: JSON.stringify({{url: url, password: pw}})
     }}).then(function(r) {{ return r.json(); }}).then(function(d) {{
@@ -489,7 +564,7 @@ function evccSendToVehicles(ids) {{
     var total = ids.length, done = 0, errors = [];
     resultDiv.innerHTML = '<div class="notice notice-info">Sending token to ' + total + ' vehicle(s)...</div>';
     ids.forEach(function(vid) {{
-        fetch('/api/evcc/update', {{
+        fetch(bp('/api/evcc/update', {{
             method: 'POST', headers: {{'Content-Type': 'application/json'}},
             body: JSON.stringify({{url: url, password: pw, vehicle_id: vid}})
         }}).then(function(r) {{ return r.json(); }}).then(function(d) {{
@@ -516,7 +591,7 @@ function evccRestart() {{
     var url = document.getElementById('evcc-url').value;
     var pw = document.getElementById('evcc-password').value;
     var resultDiv = document.getElementById('evcc-result');
-    fetch('/api/evcc/restart', {{
+    fetch(bp('/api/evcc/restart', {{
         method: 'POST', headers: {{'Content-Type': 'application/json'}},
         body: JSON.stringify({{url: url, password: pw}})
     }}).then(function(r) {{ return r.json(); }}).then(function(d) {{
@@ -536,7 +611,7 @@ function evccDone(msg) {{
     }}, 1000);
 }}
 function evccReset() {{
-    fetch('/reset', {{ method: 'POST' }}).then(function() {{ location.href = '/'; }});
+    fetch(bp('/reset', {{ method: 'POST' }}).then(function() {{ location.href = bp('/'); }});
 }}
 {"// Auto-connect if evcc is configured\nwindow.addEventListener('load', function() { document.getElementById('evcc-result').innerHTML = '<div class=\"notice notice-info\">Connecting to evcc...</div>'; evccLoadVehicles(); });" if evcc_configured else ""}
 </script>""")
@@ -549,7 +624,7 @@ function evccReset() {{
     <div class="notice notice-error">{err}</div>
     <details open><summary>Log</summary><div class="log">{format_log()}</div></details>
     <hr class="divider">
-    <form method="POST" action="/reset">
+    <form method="POST" action="" onsubmit="event.preventDefault();fetch(bp('/reset'),{{method:'POST'}}).then(function(){{location.href=bp('/')}})">
         <button type="submit" class="btn btn-danger">Reset</button>
     </form>
 </div>""")
@@ -559,7 +634,8 @@ function evccReset() {{
 @app.route("/reset", methods=["POST"])
 def reset():
     state.update({"status": "idle", "refresh_token": None, "access_token": None,
-                  "error": None, "test_result": "", "log": [], "brand_override": None})
+                  "error": None, "test_result": "", "log": [], "brand_override": None,
+                  "vehicles": []})
     return flask_redirect("/")
 
 @app.route("/test", methods=["POST"])
@@ -589,25 +665,41 @@ def test_token():
 
 @app.route("/api/quicklogin", methods=["POST"])
 def api_quicklogin():
-    """Direct headless login for EU brands — no browser, no Start button needed."""
+    """Headless login — single vehicle or all configured vehicles."""
     data = request.get_json()
+    mode = data.get("mode", "single")
+
+    if mode == "all":
+        # Generate tokens for all configured vehicles
+        threading.Thread(target=_auto_start_login, daemon=True).start()
+        return jsonify({"ok": True, "message": "Generating tokens for all vehicles..."})
+
+    if mode == "list":
+        # Generate tokens for a list of vehicles from the UI
+        vehicles = data.get("vehicles", [])
+        if not vehicles:
+            return jsonify({"ok": False, "error": "No vehicles provided"})
+        # Store temporarily and run auto-start with these vehicles
+        os.environ["_TEMP_VEHICLES"] = json.dumps(vehicles)
+        threading.Thread(target=_auto_start_login, daemon=True).start()
+        return jsonify({"ok": True})
+
+    # Single vehicle login
     username = data.get("username", "")
     password = data.get("password", "")
     chosen_brand = data.get("brand", "").lower()
     if not username or not password:
         return jsonify({"ok": False, "error": "Username and password required"})
 
-    # Use brand from request, fall back to get_brand()
     chosen_brand = BRAND_ALIASES.get(chosen_brand, chosen_brand)
-    if chosen_brand in BRAND_CONFIG:
-        state["brand_override"] = chosen_brand
-    brand = chosen_brand if chosen_brand in BRAND_CONFIG else get_brand()
-    config = BRAND_CONFIG[brand]
-    if brand not in ("eu_kia", "eu_hyundai"):
-        return jsonify({"ok": False, "error": "Quick login only supported for EU brands"})
+    if chosen_brand not in BRAND_CONFIG:
+        chosen_brand = "eu_kia"
+    state["brand_override"] = chosen_brand
+    config = BRAND_CONFIG[chosen_brand]
 
     state["status"] = "processing"
     state["log"] = []
+    state["vehicles"] = []
     log(f"Quick login: starting for {config['region_name']} {config['brand_name']}...")
 
     try:
@@ -906,25 +998,24 @@ def evcc_restart():
         return jsonify({"ok": False, "error": str(e)})
 
 def _auto_start_login():
-    """Auto-start headless login if credentials are configured via env vars."""
+    """Auto-start headless login for all configured vehicles."""
     import sys
-    username = os.environ.get("BLUELINK_USERNAME", "")
-    password = os.environ.get("BLUELINK_PASSWORD", "")
-    brand_env = os.environ.get("BRAND", "auto").lower()
-    brand_env = BRAND_ALIASES.get(brand_env, brand_env)
-    print(f"[AUTO] username={bool(username)}, password={bool(password)}, brand={brand_env}", file=sys.stderr, flush=True)
+    vehicles = _get_vehicles_config()
+    # Check for temp vehicles from UI
+    temp_vj = os.environ.pop("_TEMP_VEHICLES", "")
+    if temp_vj:
+        try:
+            vehicles = json.loads(temp_vj)
+        except Exception:
+            pass
+    print(f"[AUTO] Found {len(vehicles)} vehicle(s) configured", file=sys.stderr, flush=True)
 
-    if not username or not password:
-        print("[AUTO] No credentials, skipping", file=sys.stderr, flush=True)
+    if not vehicles:
+        print("[AUTO] No vehicles configured, skipping", file=sys.stderr, flush=True)
         return
-    if brand_env not in ("eu_kia", "eu_hyundai") and brand_env != "auto":
-        print(f"[AUTO] Brand {brand_env} not supported, skipping", file=sys.stderr, flush=True)
-        return
 
-    brand = brand_env if brand_env in BRAND_CONFIG else "eu_kia"
-    config = BRAND_CONFIG[brand]
-
-    # Check HA sensor for token expiry — skip if token is still valid
+    # Check token expiry — skip if still valid
+    should_skip = False
     supervisor_token = os.environ.get("SUPERVISOR_TOKEN")
     if supervisor_token:
         try:
@@ -935,63 +1026,93 @@ def _auto_start_login():
             if resp.status_code == 200:
                 sensor = resp.json()
                 expiry_str = sensor.get("state", "")
-                if expiry_str and expiry_str != "unknown" and expiry_str != "unavailable":
+                if expiry_str and expiry_str not in ("unknown", "unavailable"):
                     from datetime import date
-                    expiry = date.fromisoformat(expiry_str)
-                    days_left = (expiry - date.today()).days
+                    days_left = (date.fromisoformat(expiry_str) - date.today()).days
                     if days_left > 14:
-                        print(f"[AUTO] Token still valid ({days_left} days left), skipping renewal", flush=True)
-                        log(f"Auto-start: token still valid ({days_left} days remaining, expires {expiry_str}). Skipping renewal.")
+                        print(f"[AUTO] Token still valid ({days_left} days left), skipping", flush=True)
+                        log(f"Auto-start: token still valid ({days_left} days remaining). Skipping.")
                         state["status"] = "idle"
-                        return
+                        should_skip = True
                     else:
-                        print(f"[AUTO] Token expires in {days_left} days, renewing...", flush=True)
                         log(f"Auto-start: token expires in {days_left} days — renewing...")
         except Exception as e:
             print(f"[AUTO] Could not check sensor: {e}", flush=True)
 
-    # Fallback for Docker (no HA): check /data/token_generated.txt
-    if not supervisor_token:
+    if not should_skip and not supervisor_token:
         try:
             with open("/data/token_generated.txt") as f:
-                from datetime import date
                 generated = datetime.fromisoformat(f.read().strip())
-                expiry = generated + timedelta(days=TOKEN_EXPIRY_DAYS)
-                days_left = (expiry - datetime.now(timezone.utc)).days
+                days_left = (generated + timedelta(days=TOKEN_EXPIRY_DAYS) - datetime.now(timezone.utc)).days
                 if days_left > 14:
-                    print(f"[AUTO] Token still valid ({days_left} days left), skipping renewal", flush=True)
-                    log(f"Auto-start: token still valid ({days_left} days remaining). Skipping renewal.")
+                    print(f"[AUTO] Token still valid ({days_left} days left), skipping", flush=True)
+                    log(f"Auto-start: token still valid ({days_left} days remaining). Skipping.")
                     state["status"] = "idle"
-                    return
+                    should_skip = True
                 else:
-                    print(f"[AUTO] Token expires in {days_left} days, renewing...", flush=True)
                     log(f"Auto-start: token expires in {days_left} days — renewing...")
         except FileNotFoundError:
-            pass  # No previous token, generate new one
+            pass
         except Exception as e:
             print(f"[AUTO] Could not check token file: {e}", flush=True)
 
-    print(f"[AUTO] Credentials configured — starting headless login for {brand}...")
+    if should_skip:
+        return
+
     state["status"] = "processing"
     state["log"] = []
-    log("Auto-start: credentials found, trying headless login...")
+    state["vehicles"] = []
+    all_ok = True
 
-    try:
-        result = _headless_login_eu(username, password, config)
-        if result.get("ok"):
-            log("Auto-start: login successful!", "ok")
-            # Auto-transfer to evcc if configured
-            evcc_url = os.environ.get("EVCC_URL", "").rstrip("/")
-            evcc_password = os.environ.get("EVCC_PASSWORD", "")
-            if evcc_url and state.get("refresh_token"):
-                _auto_evcc_transfer(evcc_url, evcc_password)
-        else:
-            log(f"Auto-start: failed: {result.get('error', 'unknown')}", "warn")
-            log("Open the web UI to try again.", "warn")
-            state["status"] = "idle"
-    except Exception as e:
-        log(f"Auto-start: error: {e}", "warn")
+    for i, v in enumerate(vehicles):
+        brand = BRAND_ALIASES.get(v.get("brand", ""), v.get("brand", ""))
+        username = v.get("username", "")
+        password = v.get("password", "")
+        if brand not in BRAND_CONFIG or not username or not password:
+            log(f"Vehicle {i+1}: invalid config (brand={brand}), skipping", "warn")
+            continue
+
+        config = BRAND_CONFIG[brand]
+        log(f"Vehicle {i+1}: {config['brand_name']} — logging in...")
+
+        try:
+            result = _headless_login_eu(username, password, config)
+            if result.get("ok"):
+                log(f"Vehicle {i+1}: token generated!", "ok")
+                state["vehicles"].append({
+                    "brand": brand,
+                    "brand_name": config["brand_name"],
+                    "username": username,
+                    "refresh_token": state["refresh_token"],
+                    "access_token": state["access_token"],
+                    "status": "ok",
+                })
+            else:
+                log(f"Vehicle {i+1}: failed — {result.get('error', 'unknown')}", "err")
+                state["vehicles"].append({
+                    "brand": brand, "brand_name": config["brand_name"],
+                    "username": username, "status": "error",
+                    "error": result.get("error", "unknown"),
+                })
+                all_ok = False
+        except Exception as e:
+            log(f"Vehicle {i+1}: error — {e}", "err")
+            all_ok = False
+
+    if all_ok and state["vehicles"]:
+        state["status"] = "success"
+        log("Auto-start: all vehicles processed!", "ok")
+        # Auto-transfer to evcc
+        evcc_url = os.environ.get("EVCC_URL", "").rstrip("/")
+        evcc_password = os.environ.get("EVCC_PASSWORD", "")
+        if evcc_url:
+            _auto_evcc_transfer(evcc_url, evcc_password)
+    elif state["vehicles"]:
+        state["status"] = "success"  # partial success
+        log("Auto-start: some vehicles failed, check log.", "warn")
+    else:
         state["status"] = "idle"
+        log("Auto-start: no vehicles processed.", "warn")
 
 
 def _auto_evcc_transfer(evcc_url, evcc_password):
