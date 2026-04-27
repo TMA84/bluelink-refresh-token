@@ -239,11 +239,17 @@ def format_log():
 
 TOKEN_EXPIRY_DAYS = 180
 
-def update_ha_sensor(brand):
-    """Create/update a Home Assistant sensor with the token expiry date."""
+def _vehicle_key(brand, username):
+    """Generate a unique key for a vehicle based on brand + username."""
+    import hashlib
+    return f"{brand}_{hashlib.md5(username.encode()).hexdigest()[:8]}"
+
+
+def update_ha_sensor(brand, username=""):
+    """Create/update a Home Assistant sensor with the token expiry date (per vehicle)."""
     supervisor_token = os.environ.get("SUPERVISOR_TOKEN")
     if not supervisor_token:
-        return  # Not running as HA addon
+        return
     try:
         now = datetime.now(timezone.utc)
         expiry = now + timedelta(days=TOKEN_EXPIRY_DAYS)
@@ -251,27 +257,70 @@ def update_ha_sensor(brand):
             "Authorization": f"Bearer {supervisor_token}",
             "Content-Type": "application/json",
         }
+        brand_name = BRAND_CONFIG.get(brand, {}).get("brand_name", brand)
+        vkey = _vehicle_key(brand, username)
+        sensor_id = f"sensor.bluelink_token_expiry_{vkey}"
+        masked_user = f"{username[:3]}***" if username else ""
         sensor_data = {
             "state": expiry.strftime("%Y-%m-%d"),
             "attributes": {
-                "friendly_name": f"Bluelink Token Expiry ({brand.title()})",
+                "friendly_name": f"Bluelink Token ({brand_name} {masked_user})",
                 "device_class": "date",
                 "icon": "mdi:key-clock",
                 "generated": now.strftime("%Y-%m-%d %H:%M"),
                 "expires": expiry.strftime("%Y-%m-%d %H:%M"),
                 "days_remaining": TOKEN_EXPIRY_DAYS,
                 "brand": brand,
+                "username": username,
             },
         }
         resp = req_lib.post(
-            f"http://supervisor/core/api/states/sensor.bluelink_token_expiry",
+            f"http://supervisor/core/api/states/{sensor_id}",
             headers=headers, json=sensor_data, timeout=10)
         if resp.status_code in (200, 201):
-            log("Home Assistant sensor updated (sensor.bluelink_token_expiry).", "ok")
+            log(f"HA sensor updated ({sensor_id}).", "ok")
         else:
             log(f"Could not update HA sensor ({resp.status_code}).", "warn")
     except Exception as e:
         log(f"Could not update HA sensor: {e}", "warn")
+
+
+def _save_token_timestamp(brand, username=""):
+    """Save token generation timestamp per vehicle for Docker expiry check."""
+    try:
+        os.makedirs("/data", exist_ok=True)
+        vkey = _vehicle_key(brand, username)
+        with open(f"/data/token_generated_{vkey}.txt", "w") as f:
+            f.write(datetime.now(timezone.utc).isoformat())
+    except Exception:
+        pass
+
+
+def _check_token_expiry(brand, username=""):
+    """Check if token for a specific vehicle is still valid. Returns days_left or None."""
+    vkey = _vehicle_key(brand, username)
+    supervisor_token = os.environ.get("SUPERVISOR_TOKEN")
+    if supervisor_token:
+        try:
+            sensor_id = f"sensor.bluelink_token_expiry_{vkey}"
+            resp = req_lib.get(
+                f"http://supervisor/core/api/states/{sensor_id}",
+                headers={"Authorization": f"Bearer {supervisor_token}"}, timeout=3)
+            if resp.status_code == 200:
+                expiry_str = resp.json().get("state", "")
+                if expiry_str and expiry_str not in ("unknown", "unavailable"):
+                    from datetime import date
+                    return (date.fromisoformat(expiry_str) - date.today()).days
+        except Exception:
+            pass
+    # Fallback: file-based
+    try:
+        with open(f"/data/token_generated_{vkey}.txt") as f:
+            generated = datetime.fromisoformat(f.read().strip())
+            return (generated + timedelta(days=TOKEN_EXPIRY_DAYS) - datetime.now(timezone.utc)).days
+    except Exception:
+        pass
+    return None
 
 # ── Routes ──────────────────────────────────────────────────
 
@@ -290,22 +339,35 @@ def index():
 
         vehicles_html = ""
         if configured_vehicles:
+
             for i, v in enumerate(configured_vehicles):
                 b = v.get("brand", "eu_kia")
                 bname = BRAND_CONFIG.get(b, {}).get("brand_name", b)
+                days_left = _check_token_expiry(b, v.get('username', ''))
+                if days_left is not None and days_left > 14:
+                    expiry_badge = f'<span style="color:var(--success);font-size:12px;font-weight:bold;">✅ {days_left} days remaining</span>'
+                elif days_left is not None:
+                    expiry_badge = f'<span style="color:var(--warning);font-size:12px;font-weight:bold;">⚠ {days_left} days remaining</span>'
+                else:
+                    expiry_badge = '<span style="color:var(--text-secondary);font-size:12px;">No token yet</span>'
                 vehicles_html += f"""
             <div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;">
-                <div style="font-weight:bold;margin-bottom:8px;">{html_lib.escape(bname)} — {html_lib.escape(v.get('username', ''))}</div>
-                <span style="color:var(--text-secondary);font-size:12px;">Configured via {'addon settings' if os.environ.get('VEHICLES_JSON') else 'environment variables'}</span>
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div style="font-weight:bold;">{html_lib.escape(bname)} — {html_lib.escape(v.get('username', ''))}</div>
+                    {expiry_badge}
+                </div>
             </div>"""
             return render(f"""
 <div class="card">
     <div class="card-title">Generate Refresh Tokens</div>
     <p style="margin-bottom:16px;color:var(--text-secondary);font-size:14px;">
-        {len(configured_vehicles)} vehicle(s) configured. Click to generate tokens for all.
+        {len(configured_vehicles)} vehicle(s) configured.
     </p>
     {vehicles_html}
-    <button class="btn btn-primary" id="ql-btn" onclick="generateAll()">Generate All Tokens</button>
+    <div class="actions">
+        <button class="btn btn-primary" id="ql-btn" onclick="generateAll(false)">Generate All Tokens</button>
+        <button class="btn btn-secondary" onclick="generateAll(true)">Force Renew</button>
+    </div>
     <div id="ql-result" style="margin-top:12px;">{error_html}</div>
     <div id="ql-log" style="margin-top:12px;">{log_html}</div>
 </div>
@@ -326,13 +388,13 @@ def index():
     <button class="btn btn-secondary" onclick="generateSingle()">Generate Token</button>
 </div>
 <script>
-function generateAll() {{
+function generateAll(force) {{
     var btn = document.getElementById('ql-btn');
     btn.disabled = true; btn.textContent = 'Generating...';
     document.getElementById('ql-result').innerHTML = '<div class="notice notice-info">Generating tokens for all vehicles...</div>';
     fetch(bp('/api/quicklogin'), {{
         method: 'POST', headers: {{'Content-Type': 'application/json'}},
-        body: JSON.stringify({{mode: 'all'}})
+        body: JSON.stringify({{mode: 'all', force: !!force}})
     }}).then(function() {{ location.href = bp("/"); }}).catch(function() {{ location.href = bp("/"); }});
 }}
 function generateSingle() {{
@@ -671,7 +733,8 @@ def api_quicklogin():
 
     if mode == "all":
         # Generate tokens for all configured vehicles
-        threading.Thread(target=_auto_start_login, daemon=True).start()
+        force = data.get("force", False)
+        threading.Thread(target=lambda: _auto_start_login(force=force), daemon=True).start()
         return jsonify({"ok": True, "message": "Generating tokens for all vehicles..."})
 
     if mode == "list":
@@ -679,9 +742,8 @@ def api_quicklogin():
         vehicles = data.get("vehicles", [])
         if not vehicles:
             return jsonify({"ok": False, "error": "No vehicles provided"})
-        # Store temporarily and run auto-start with these vehicles
         os.environ["_TEMP_VEHICLES"] = json.dumps(vehicles)
-        threading.Thread(target=_auto_start_login, daemon=True).start()
+        threading.Thread(target=lambda: _auto_start_login(force=True), daemon=True).start()
         return jsonify({"ok": True})
 
     # Single vehicle login
@@ -836,14 +898,10 @@ def _headless_login_eu(username, password, config):
     state["access_token"] = tokens.get("access_token", "N/A")
     state["status"] = "success"
     log("Token generated successfully via headless login!", "ok")
-    update_ha_sensor(get_brand())
-    # Save generation timestamp for Docker (non-HA) expiry check
-    try:
-        os.makedirs("/data", exist_ok=True)
-        with open("/data/token_generated.txt", "w") as f:
-            f.write(datetime.now(timezone.utc).isoformat())
-    except Exception:
-        pass
+    # Determine brand from config for sensor/timestamp
+    _brand = next((k for k, v in BRAND_CONFIG.items() if v.get("client_id") == config.get("client_id")), "eu_kia")
+    update_ha_sensor(_brand, username)
+    _save_token_timestamp(_brand, username)
 
     return {"ok": True, "message": "Login successful — tokens generated!"}
 
@@ -997,7 +1055,7 @@ def evcc_restart():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
 
-def _auto_start_login():
+def _auto_start_login(force=False):
     """Auto-start headless login for all configured vehicles."""
     import sys
     vehicles = _get_vehicles_config()
@@ -1006,59 +1064,16 @@ def _auto_start_login():
     if temp_vj:
         try:
             vehicles = json.loads(temp_vj)
+            force = True  # UI-triggered = always generate
         except Exception:
             pass
-    print(f"[AUTO] Found {len(vehicles)} vehicle(s) configured", file=sys.stderr, flush=True)
+    print(f"[AUTO] Found {len(vehicles)} vehicle(s) configured, force={force}", file=sys.stderr, flush=True)
 
     if not vehicles:
         print("[AUTO] No vehicles configured, skipping", file=sys.stderr, flush=True)
         return
 
-    # Check token expiry — skip if still valid
-    should_skip = False
-    supervisor_token = os.environ.get("SUPERVISOR_TOKEN")
-    if supervisor_token:
-        try:
-            resp = req_lib.get(
-                "http://supervisor/core/api/states/sensor.bluelink_token_expiry",
-                headers={"Authorization": f"Bearer {supervisor_token}"},
-                timeout=5)
-            if resp.status_code == 200:
-                sensor = resp.json()
-                expiry_str = sensor.get("state", "")
-                if expiry_str and expiry_str not in ("unknown", "unavailable"):
-                    from datetime import date
-                    days_left = (date.fromisoformat(expiry_str) - date.today()).days
-                    if days_left > 14:
-                        print(f"[AUTO] Token still valid ({days_left} days left), skipping", flush=True)
-                        log(f"Auto-start: token still valid ({days_left} days remaining). Skipping.")
-                        state["status"] = "idle"
-                        should_skip = True
-                    else:
-                        log(f"Auto-start: token expires in {days_left} days — renewing...")
-        except Exception as e:
-            print(f"[AUTO] Could not check sensor: {e}", flush=True)
-
-    if not should_skip and not supervisor_token:
-        try:
-            with open("/data/token_generated.txt") as f:
-                generated = datetime.fromisoformat(f.read().strip())
-                days_left = (generated + timedelta(days=TOKEN_EXPIRY_DAYS) - datetime.now(timezone.utc)).days
-                if days_left > 14:
-                    print(f"[AUTO] Token still valid ({days_left} days left), skipping", flush=True)
-                    log(f"Auto-start: token still valid ({days_left} days remaining). Skipping.")
-                    state["status"] = "idle"
-                    should_skip = True
-                else:
-                    log(f"Auto-start: token expires in {days_left} days — renewing...")
-        except FileNotFoundError:
-            pass
-        except Exception as e:
-            print(f"[AUTO] Could not check token file: {e}", flush=True)
-
-    if should_skip:
-        return
-
+    # Check token expiry per vehicle (unless force=True)
     state["status"] = "processing"
     state["log"] = []
     state["vehicles"] = []
@@ -1073,6 +1088,16 @@ def _auto_start_login():
             continue
 
         config = BRAND_CONFIG[brand]
+
+        # Per-vehicle expiry check
+        if not force:
+            days_left = _check_token_expiry(brand, username)
+            if days_left is not None and days_left > 14:
+                log(f"Vehicle {i+1}: {config['brand_name']} — token still valid ({days_left} days). Skipping.", "ok")
+                continue
+            elif days_left is not None:
+                log(f"Vehicle {i+1}: {config['brand_name']} — token expires in {days_left} days, renewing...")
+
         log(f"Vehicle {i+1}: {config['brand_name']} — logging in...")
 
         try:
