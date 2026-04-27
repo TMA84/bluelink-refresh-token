@@ -1,0 +1,5 @@
+flask
+requests
+curl_cffi
+pycryptodome
+pyinstaller
