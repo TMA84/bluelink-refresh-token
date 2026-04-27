@@ -57,7 +57,6 @@ def _get_vehicles_config():
                     if isinstance(item, dict):
                         vehicles.append(item)
                     elif isinstance(item, str):
-                        # bashio may serialize nested objects as strings
                         try:
                             obj = json.loads(item)
                             if isinstance(obj, dict):
@@ -66,6 +65,22 @@ def _get_vehicles_config():
                             pass
             elif isinstance(parsed, dict):
                 vehicles.append(parsed)
+        except json.JSONDecodeError:
+            # bashio may output concatenated JSON objects: {...}{...}
+            # Try to split and parse individually
+            try:
+                import re as _re
+                for m in _re.finditer(r'\{[^{}]*\}', vj):
+                    try:
+                        obj = json.loads(m.group())
+                        if isinstance(obj, dict) and "brand" in obj:
+                            vehicles.append(obj)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            if not vehicles:
+                print(f"[WARN] Could not parse VEHICLES_JSON: {vj[:200]}", flush=True)
         except Exception as e:
             print(f"[WARN] Could not parse VEHICLES_JSON: {e} — raw: {vj[:200]}", flush=True)
     # Fallback: single vehicle from env vars (Docker standalone)
