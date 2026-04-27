@@ -49,12 +49,23 @@ Replace `docker` with `podman` if using Podman.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `BRAND` | `auto`, `eu_kia`, or `eu_hyundai` | `auto` |
-| `BLUELINK_USERNAME` | Bluelink email/username | |
-| `BLUELINK_PASSWORD` | Bluelink password (8-20 characters) | |
+| `BRAND` | `auto`, `eu_kia`, or `eu_hyundai` (single vehicle) | `auto` |
+| `BLUELINK_USERNAME` | Bluelink email/username (single vehicle) | |
+| `BLUELINK_PASSWORD` | Bluelink password (single vehicle, 8-20 characters) | |
+| `VEHICLES_JSON` | JSON array of vehicles (multi-vehicle, overrides BRAND/USERNAME/PASSWORD) | |
 | `EVCC_URL` | evcc URL for automatic token transfer | |
 | `EVCC_PASSWORD` | evcc admin password | |
 | `COUNTRY` | Country code for EU Hyundai | `DE` |
+
+### Multi-Vehicle via VEHICLES_JSON
+
+```bash
+docker run -d --name bluelink-token -p 9876:9876 \
+  -e 'VEHICLES_JSON=[{"brand":"eu_kia","username":"kia@email.com","password":"kiapass"},{"brand":"eu_hyundai","username":"hyundai@email.com","password":"hyundaipass"}]' \
+  -e EVCC_URL=http://evcc:7070 \
+  -v bluelink-data:/data \
+  ghcr.io/tma84/bluelink-token:latest /run-standalone.sh
+```
 
 > **Password requirements:** 8–20 characters, at least one uppercase letter, one lowercase letter, one digit, and one special character.
 

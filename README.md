@@ -71,6 +71,10 @@ docker run -d --name bluelink-token -p 9876:9876 \
   ghcr.io/tma84/bluelink-token:latest /run-standalone.sh
 ```
 
+### Windows
+
+Download `BluelinkTokenGenerator.exe` from the [latest release](https://github.com/TMA84/bluelink-refresh-token/releases/latest) — no installation needed. Double-click to start, a browser window opens automatically.
+
 ## How it works
 
 1. Fetches the RSA public key from Kia/Hyundai
