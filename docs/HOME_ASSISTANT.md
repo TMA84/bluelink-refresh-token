@@ -13,7 +13,7 @@
 
 2. Find "Bluelink Token Generator" in the store and click **Install**.
 3. Configure the add-on (see below).
-4. Start the add-on — the token is generated automatically.
+4. Start the add-on — tokens are generated automatically.
 
 [repo-badge]: https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg
 [repo-url]: https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FTMA84%2Fbluelink-refresh-token
@@ -53,9 +53,14 @@ evcc_password: adminpass
 
 > **Password requirements:** 8–20 characters, at least one uppercase letter, one lowercase letter, one digit, and one special character.
 
-## Token Expiry Sensor
+## Token Expiry Sensors
 
-After each token generation, a sensor `sensor.bluelink_token_expiry` is created automatically.
+A sensor is created per vehicle after token generation:
+
+- `sensor.bluelink_token_expiry_eu_kia_<hash>` — for Kia vehicles
+- `sensor.bluelink_token_expiry_eu_hyundai_<hash>` — for Hyundai vehicles
+
+The `<hash>` is derived from the username to support multiple accounts per brand.
 
 | Attribute | Description |
 |-----------|-------------|
@@ -64,27 +69,34 @@ After each token generation, a sensor `sensor.bluelink_token_expiry` is created 
 | `expires` | Date and time the token expires |
 | `days_remaining` | Days until expiry (180 at generation) |
 | `brand` | `eu_kia` or `eu_hyundai` |
+| `username` | Account email |
 
-On each addon restart, the sensor is checked:
-- Token still valid (>14 days) → no action
+On each addon restart, each vehicle's sensor is checked individually:
+- Token still valid (>14 days) → skipped
 - Token expiring soon (<14 days) → automatic renewal
 
 ## Automatic Token Renewal
 
 ### Via Automation (recommended)
 
-Create an automation that restarts the addon when the token is about to expire.
+Create an automation that restarts the addon when any token is about to expire. Use the sensor name from the addon log.
 
 **Settings → Automations → New Automation → ⋮ → Edit as YAML:**
 
 ```yaml
 alias: Bluelink Token Auto-Renew
-description: Renews the Bluelink token automatically 14 days before expiry
+description: Renews Bluelink tokens automatically 14 days before expiry
 triggers:
   - trigger: template
     value_template: >-
-      {{ (as_timestamp(states('sensor.bluelink_token_expiry')) -
-      as_timestamp(now())) / 86400 < 14 }}
+      {% set sensors = states.sensor
+        | selectattr('entity_id', 'match', 'sensor.bluelink_token_expiry_')
+        | list %}
+      {% for s in sensors %}
+        {% if (as_timestamp(s.state) - as_timestamp(now())) / 86400 < 14 %}
+          true
+        {% endif %}
+      {% endfor %}
 actions:
   - action: hassio.addon_restart
     data:
@@ -96,38 +108,41 @@ mode: single
 
 ### Via Start on Boot
 
-Enable **Start on boot** in the addon settings. The addon checks the token expiry on each HA restart and only renews if needed.
+Enable **Start on boot** in the addon settings. The addon checks each vehicle's token expiry on every HA restart and only renews those that need it.
 
 ## Expiry Reminder Notification
 
-Get a notification when the token is about to expire:
-
 ```yaml
 alias: Bluelink Token Expiry Reminder
-description: Sends a notification 14 days before the token expires
+description: Notification when any Bluelink token is about to expire
 triggers:
   - trigger: template
     value_template: >-
-      {{ (as_timestamp(states('sensor.bluelink_token_expiry')) -
-      as_timestamp(now())) / 86400 < 14 }}
+      {% set sensors = states.sensor
+        | selectattr('entity_id', 'match', 'sensor.bluelink_token_expiry_')
+        | list %}
+      {% for s in sensors %}
+        {% if (as_timestamp(s.state) - as_timestamp(now())) / 86400 < 14 %}
+          true
+        {% endif %}
+      {% endfor %}
 actions:
   - action: notify.notify
     data:
       title: Bluelink Token expires soon
       message: >-
-        Your Bluelink token expires in
-        {{ ((as_timestamp(states('sensor.bluelink_token_expiry')) -
-        as_timestamp(now())) / 86400) | round(0) }} days. Please regenerate it.
+        One or more Bluelink tokens expire within 14 days. Please restart
+        the Bluelink Token Generator addon to renew them.
 mode: single
 ```
 
 ## evcc Integration
 
-If `evcc_url` is configured, the token is automatically transferred to evcc after generation:
+If `evcc_url` is configured, tokens are automatically transferred to evcc after generation:
 
 1. Connects to evcc and logs in (if password is set)
 2. Finds all Hyundai/Kia vehicles
-3. Updates the refresh token on each vehicle
+3. Matches the correct token to each vehicle by brand (Kia token → Kia vehicle, Hyundai token → Hyundai vehicle)
 4. Restarts evcc
 
 This works with evcc running as a HA add-on, Docker container, or native installation.
