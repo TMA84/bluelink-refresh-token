@@ -51,9 +51,23 @@ def _get_vehicles_config():
     vj = os.environ.get("VEHICLES_JSON", "").strip()
     if vj and vj != "[]":
         try:
-            vehicles = json.loads(vj)
-        except Exception:
-            pass
+            parsed = json.loads(vj)
+            if isinstance(parsed, list):
+                for item in parsed:
+                    if isinstance(item, dict):
+                        vehicles.append(item)
+                    elif isinstance(item, str):
+                        # bashio may serialize nested objects as strings
+                        try:
+                            obj = json.loads(item)
+                            if isinstance(obj, dict):
+                                vehicles.append(obj)
+                        except Exception:
+                            pass
+            elif isinstance(parsed, dict):
+                vehicles.append(parsed)
+        except Exception as e:
+            print(f"[WARN] Could not parse VEHICLES_JSON: {e} — raw: {vj[:200]}", flush=True)
     # Fallback: single vehicle from env vars (Docker standalone)
     if not vehicles:
         brand = os.environ.get("BRAND", "auto").lower()
@@ -341,6 +355,8 @@ def index():
         if configured_vehicles:
 
             for i, v in enumerate(configured_vehicles):
+                if not isinstance(v, dict):
+                    continue
                 b = v.get("brand", "eu_kia")
                 bname = BRAND_CONFIG.get(b, {}).get("brand_name", b)
                 days_left = _check_token_expiry(b, v.get('username', ''))
@@ -1083,6 +1099,9 @@ def _auto_start_login(force=False):
     all_ok = True
 
     for i, v in enumerate(vehicles):
+        if not isinstance(v, dict):
+            log(f"Vehicle {i+1}: invalid format ({type(v).__name__}), skipping", "warn")
+            continue
         brand = BRAND_ALIASES.get(v.get("brand", ""), v.get("brand", ""))
         username = v.get("username", "")
         password = v.get("password", "")
