@@ -1,0 +1,57 @@
+name: Build Standalone Apps
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ${{ matrix.os_name }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-latest
+            os_name: Windows
+            artifact: BluelinkTokenGenerator.exe
+            pyinstaller_sep: ";"
+          - runner: ubuntu-latest
+            os_name: Linux
+            artifact: BluelinkTokenGenerator-Linux
+            pyinstaller_sep: ":"
+          - runner: macos-latest
+            os_name: macOS
+            artifact: BluelinkTokenGenerator-macOS
+            pyinstaller_sep: ":"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r standalone/requirements.txt
+
+      - name: Build executable
+        run: |
+          cd standalone
+          pyinstaller --onefile --name ${{ matrix.artifact }} --add-data "web.py${{ matrix.pyinstaller_sep }}." --hidden-import curl_cffi --hidden-import Crypto --collect-all curl_cffi --collect-all Crypto bluelink_token.py
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: standalone/dist/${{ matrix.artifact }}*
+
+      - name: Upload to release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          gh release upload "${{ github.ref_name }}" standalone/dist/${{ matrix.artifact }}* --clobber
