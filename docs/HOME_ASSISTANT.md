@@ -2,21 +2,21 @@
 
 ## Installation
 
-1. Add this repository to your Home Assistant add-on store:
+1. Add this repository to your Home Assistant app store:
 
-   [![Open your Home Assistant instance and show the add add-on repository dialog.][repo-badge]][repo-url]
+   [![Open your Home Assistant instance and show the add app repository dialog.][repo-badge]][repo-url]
 
-   Or manually: **Settings → Add-ons → Add-on Store → ⋮ → Repositories** and paste:
+   Or manually: **Settings → Apps → App Store → ⋮ → Repositories** and paste:
    ```
    https://github.com/TMA84/bluelink-refresh-token
    ```
 
 2. Find "Bluelink Token Generator" in the store and click **Install**.
-3. Configure the add-on (see below).
-4. Start the add-on — tokens are generated automatically.
+3. Configure the app (see below).
+4. Start the app — tokens are generated automatically.
 
-[repo-badge]: https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg
-[repo-url]: https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FTMA84%2Fbluelink-refresh-token
+[repo-badge]: https://my.home-assistant.io/badges/supervisor_add_app_repository.svg
+[repo-url]: https://my.home-assistant.io/redirect/supervisor_add_app_repository/?repository_url=https%3A%2F%2Fgithub.com%2FTMA84%2Fbluelink-refresh-token
 
 ## Configuration
 
@@ -71,7 +71,7 @@ The `<hash>` is derived from the username to support multiple accounts per brand
 | `brand` | `eu_kia` or `eu_hyundai` |
 | `username` | Account email |
 
-On each addon restart, each vehicle's sensor is checked individually:
+On each app restart, each vehicle's sensor is checked individually:
 - Token still valid (>14 days) → skipped
 - Token expiring soon (<14 days) → automatic renewal
 
@@ -79,7 +79,7 @@ On each addon restart, each vehicle's sensor is checked individually:
 
 ### Via Automation (recommended)
 
-Create an automation that restarts the addon when any token is about to expire. Use the sensor name from the addon log.
+Create an automation that restarts the app when any token is about to expire. Use the sensor name from the app log.
 
 **Settings → Automations → New Automation → ⋮ → Edit as YAML:**
 
@@ -104,11 +104,11 @@ actions:
 mode: single
 ```
 
-> **Note:** The addon identifier is `local_bluelink_token`. You can verify this in **Settings → Add-ons → Bluelink Token Generator** — the slug is shown in the URL.
+> **Note:** The addon identifier is `local_bluelink_token`. You can verify this in **Settings → Apps → Bluelink Token Generator** — the slug is shown in the URL.
 
 ### Via Start on Boot
 
-Enable **Start on boot** in the addon settings. The addon checks each vehicle's token expiry on every HA restart and only renews those that need it.
+Enable **Start on boot** in the app settings. The app checks each vehicle's token expiry on every HA restart and only renews those that need it.
 
 ## Expiry Reminder Notification
 
@@ -132,7 +132,7 @@ actions:
       title: Bluelink Token expires soon
       message: >-
         One or more Bluelink tokens expire within 14 days. Please restart
-        the Bluelink Token Generator addon to renew them.
+        the Bluelink Token Generator app to renew them.
 mode: single
 ```
 
@@ -145,7 +145,7 @@ If `evcc_url` is configured, tokens are automatically transferred to evcc after 
 3. Matches the correct token to each vehicle by brand (Kia token → Kia vehicle, Hyundai token → Hyundai vehicle)
 4. Restarts evcc
 
-This works with evcc running as a HA add-on, Docker container, or native installation.
+This works with evcc running as a HA app, Docker container, or native installation.
 
 ## Where to use the token
 
