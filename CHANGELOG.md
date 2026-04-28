@@ -1,5 +1,23 @@
 # Changelog
 
+## 6.1.0
+
+### Neu
+- **Standalone Apps** für Windows, Linux und macOS — kein Docker/Python nötig
+  - `BluelinkTokenGenerator.exe` (Windows)
+  - `BluelinkTokenGenerator-Linux` (Linux)
+  - `BluelinkTokenGenerator-macOS` (macOS)
+  - Doppelklick → Browser öffnet sich → Credentials eingeben → Token generieren
+- **Buy me a coffee** statt GitHub Sponsors
+
+### Fix
+- bashio VEHICLES_JSON Parsing (konkatenierte JSON-Objekte)
+- JavaScript bp() Klammern in allen fetch()-Calls
+- bp() im head definiert (verfügbar für alle inline Scripts)
+- Per-Vehicle Token-Tracking (Brand + Username Hash)
+- evcc Token-Map: richtiger Token pro Fahrzeug-Brand
+- HA Terminologie: Add-ons → Apps
+
 ## 6.0.0
 
 ### Neu
