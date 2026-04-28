@@ -54,7 +54,7 @@ This project is developed and maintained in my free time. If it saves you time o
 
 → **[Home Assistant Setup Guide](docs/HOME_ASSISTANT.md)**
 
-[![Open your Home Assistant instance and show the add add-on repository dialog.][repo-badge]][repo-url]
+[![Add repository to Home Assistant][repo-badge]][repo-url]
 
 [repo-badge]: https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg
 [repo-url]: https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FTMA84%2Fbluelink-refresh-token
