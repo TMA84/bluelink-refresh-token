@@ -95,6 +95,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Sync web.py to addon folders
+        run: |
+          cp standalone/web.py bluelink-token/web.py
+          cp standalone/web.py bluelink-token-dev/web.py
+
       - name: Build image
         uses: home-assistant/builder/actions/build-image@2026.03.2
         with:
