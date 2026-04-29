@@ -40,6 +40,7 @@ Developed by reverse engineering the official Kia Connect App. Uses `curl_cffi` 
 - **HA Ingress** — Web UI accessible directly from the Home Assistant sidebar
 - **Simple Web UI** — add vehicles dynamically, click "Generate All Tokens"
 - Home Assistant token expiry sensor
+- **Standalone apps** — native downloads for Windows (.exe), macOS (.dmg) and Linux (.AppImage)
 - Supports `amd64` and `aarch64` (Raspberry Pi, Apple Silicon)
 
 ## ☕ Support this project
@@ -71,9 +72,15 @@ docker run -d --name bluelink-token -p 9876:9876 \
   ghcr.io/tma84/bluelink-token:latest /run-standalone.sh
 ```
 
-### Windows
+### Standalone Apps (Windows, macOS, Linux)
 
-Download `BluelinkTokenGenerator.exe` from the [latest release](https://github.com/TMA84/bluelink-refresh-token/releases/latest) — no installation needed. Double-click to start, a browser window opens automatically.
+No Docker or Python needed — download from the [latest release](https://github.com/TMA84/bluelink-refresh-token/releases/latest), double-click to start, a browser window opens automatically.
+
+| Platform | Download | Notes |
+|----------|----------|-------|
+| **Windows** | `BluelinkTokenGenerator.exe` | No installation needed |
+| **macOS** | `BluelinkTokenGenerator-macOS.dmg` | Open DMG, drag to Applications |
+| **Linux** | `BluelinkTokenGenerator-Linux.AppImage` | `chmod +x`, then double-click or run from terminal |
 
 ## How it works
 
