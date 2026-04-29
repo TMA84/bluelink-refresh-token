@@ -1,5 +1,18 @@
 # Changelog
 
+## 6.2.0
+
+### Neu
+- **API-Endpunkt `/api/tokens`** — programmatischer Zugriff auf Tokens ohne Web-UI (#8)
+  - `GET /api/tokens` — aktuellen Token-Status aller Fahrzeuge abrufen
+  - `POST /api/tokens` — Tokens generieren/erneuern (mit `"force": true` erzwingen)
+  - Gibt pro Fahrzeug `refresh_token`, `days_remaining` und `status` zurück
+- **macOS DMG** — Standalone-App als `.dmg` mit `.app`-Bundle (Drag & Drop in Applications)
+- **Linux AppImage** — universelle Standalone-App für alle Linux-Distributionen
+
+### Verbessert
+- Standalone-Apps Dokumentation in README (Nutzung + Troubleshooting)
+
 ## 6.1.0
 
 ### Neu
