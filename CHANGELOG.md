@@ -1,5 +1,12 @@
 # Changelog
 
+## 6.3.1
+
+### Verbessert
+- **Single-Source `web.py`** — nur noch `standalone/web.py` editieren, Addon-Kopien werden automatisch synchronisiert
+- **Auto-Reset nach 5 Minuten** — Token wird aus dem Speicher gelöscht wenn kein `API_TOKEN` konfiguriert ist
+- Token wird bei API-Abruf (`GET /api/tokens`) sofort gelöscht wenn kein `API_TOKEN` gesetzt ist
+
 ## 6.3.0
 
 ### Neu
