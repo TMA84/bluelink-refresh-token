@@ -82,6 +82,21 @@ No Docker or Python needed — download from the [latest release](https://github
 | **macOS** | `BluelinkTokenGenerator-macOS.dmg` | Open DMG, drag to Applications |
 | **Linux** | `BluelinkTokenGenerator-Linux.AppImage` | `chmod +x`, then double-click or run from terminal |
 
+#### Usage
+
+1. Download the file for your platform from the [latest release](https://github.com/TMA84/bluelink-refresh-token/releases/latest)
+2. Start the app:
+   - **Windows:** Double-click `BluelinkTokenGenerator.exe`
+   - **macOS:** Open the `.dmg`, drag "Bluelink Token Generator" to Applications, then launch it from there
+   - **Linux:** Make executable (`chmod +x BluelinkTokenGenerator-Linux.AppImage`) and double-click or run `./BluelinkTokenGenerator-Linux.AppImage`
+3. A browser window opens automatically at `http://localhost:9876`
+4. Select your brand (Kia or Hyundai), enter your credentials, and click "Generate Token"
+5. Copy the refresh token and use it as the password in evcc or Home Assistant
+
+> **macOS:** On first launch, macOS may block the app. Go to System Settings → Privacy & Security and click "Open Anyway".
+>
+> **Linux:** If double-click doesn't work, your system may need FUSE installed (`sudo apt install libfuse2` on Ubuntu/Debian). Alternatively, run with `--appimage-extract-and-run` flag.
+
 ## How it works
 
 1. Fetches the RSA public key from Kia/Hyundai
