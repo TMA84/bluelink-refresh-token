@@ -181,6 +181,15 @@ curl -X POST http://localhost:9876/api/tokens
 curl -X POST http://localhost:9876/api/tokens -H "Content-Type: application/json" -d '{"force": true}'
 ```
 
+You can also provide credentials directly to generate a token for a single vehicle without pre-configuring it:
+
+```bash
+curl -X POST http://localhost:9876/api/tokens \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer my-secret-token" \
+  -d '{"brand": "eu_kia", "username": "user@example.com", "password": "yourpassword"}'
+```
+
 ```json
 {
   "ok": true,

@@ -1020,10 +1020,17 @@ def api_tokens_get():
 
 @app.route("/api/tokens", methods=["POST"])
 def api_tokens_generate():
-    """Generate tokens for all configured vehicles (or force renew).
+    """Generate tokens for all configured vehicles or a single vehicle via credentials.
     
     Request body (optional):
       { "force": true }   — renew even if token is still valid
+    
+    Or provide credentials directly for a single vehicle:
+      {
+        "brand": "eu_kia",
+        "username": "user@example.com",
+        "password": "yourpassword"
+      }
     
     Response:
       {
@@ -1046,6 +1053,39 @@ def api_tokens_generate():
 
     data = request.get_json(silent=True) or {}
     force = data.get("force", False)
+
+    # If credentials are provided directly, use those for a single vehicle
+    if data.get("username") and data.get("password"):
+        brand = BRAND_ALIASES.get(data.get("brand", "eu_kia").lower(), data.get("brand", "eu_kia").lower())
+        username = data["username"]
+        password = data["password"]
+        if brand not in BRAND_CONFIG:
+            return jsonify({"ok": False, "error": f"Unknown brand: {brand}. Use 'eu_kia' or 'eu_hyundai'."}), 400
+        config = BRAND_CONFIG[brand]
+        try:
+            result = _headless_login_eu(username, password, config)
+            if result.get("ok"):
+                token = state.get("refresh_token")
+                return jsonify({"ok": True, "vehicles": [{
+                    "brand": brand, "brand_name": config["brand_name"],
+                    "username": username, "status": "ok",
+                    "refresh_token": token,
+                    "message": "Token generated successfully",
+                }]})
+            else:
+                return jsonify({"ok": False, "vehicles": [{
+                    "brand": brand, "brand_name": config["brand_name"],
+                    "username": username, "status": "error",
+                    "message": result.get("error", "Login failed"),
+                }]})
+        except Exception as e:
+            return jsonify({"ok": False, "vehicles": [{
+                "brand": brand, "brand_name": config["brand_name"],
+                "username": username, "status": "error",
+                "message": str(e),
+            }]})
+
+    # Otherwise, generate for all configured vehicles
     vehicles = _get_vehicles_config()
 
     if not vehicles:
