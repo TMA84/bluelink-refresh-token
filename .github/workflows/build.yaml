@@ -61,8 +61,10 @@ jobs:
             --title "v${VERSION}" \
             --notes "$NOTES"
 
+  # ── Container Images ────────────────────────────────────────
+
   init:
-    name: Initialize build
+    name: Initialize container build
     needs: release
     if: needs.release.outputs.created == 'true'
     runs-on: ubuntu-latest
@@ -79,8 +81,8 @@ jobs:
           image-name: ${{ env.IMAGE_NAME }}
           registry-prefix: ${{ needs.release.outputs.registry_prefix }}
 
-  build:
-    name: Build ${{ matrix.arch }} image
+  build-container:
+    name: Build ${{ matrix.arch }} container
     needs: [release, init]
     runs-on: ${{ matrix.os }}
     permissions:
@@ -108,7 +110,7 @@ jobs:
 
   manifest:
     name: Publish multi-arch manifest
-    needs: [release, init, build]
+    needs: [release, init, build-container]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -153,3 +155,131 @@ jobs:
           EOF
           )
           gh release edit "v${VERSION}" --notes "${EXISTING}${IMAGES}"
+
+  # ── Standalone Apps ─────────────────────────────────────────
+
+  build-standalone:
+    name: Build ${{ matrix.os_name }} standalone
+    needs: release
+    if: needs.release.outputs.created == 'true'
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-latest
+            os_name: Windows
+          - runner: ubuntu-latest
+            os_name: Linux
+          - runner: macos-latest
+            os_name: macOS
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r standalone/requirements.txt
+
+      - name: Build executable (Windows)
+        if: matrix.os_name == 'Windows'
+        run: |
+          cd standalone
+          pyinstaller --onefile --name BluelinkTokenGenerator.exe --add-data "web.py;." --hidden-import curl_cffi --hidden-import Crypto --collect-all curl_cffi --collect-all Crypto bluelink_token.py
+
+      - name: Build executable (Linux)
+        if: matrix.os_name == 'Linux'
+        run: |
+          cd standalone
+          pyinstaller --onefile --name BluelinkTokenGenerator-Linux --add-data "web.py:." --hidden-import curl_cffi --hidden-import Crypto --collect-all curl_cffi --collect-all Crypto bluelink_token.py
+
+      - name: Create Linux AppImage
+        if: matrix.os_name == 'Linux'
+        run: |
+          cd standalone
+          mkdir -p AppDir/usr/bin AppDir/usr/share/icons/hicolor/256x256/apps
+          cp dist/BluelinkTokenGenerator-Linux AppDir/usr/bin/BluelinkTokenGenerator
+          cp ../bluelink-token/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/bluelink-token.png
+          cp ../bluelink-token/icon.png AppDir/bluelink-token.png
+          cat > AppDir/BluelinkTokenGenerator.desktop << 'EOF'
+          [Desktop Entry]
+          Name=Bluelink Token Generator
+          Exec=BluelinkTokenGenerator
+          Icon=bluelink-token
+          Type=Application
+          Categories=Utility;
+          Comment=Generate Hyundai/Kia Bluelink refresh tokens
+          EOF
+          sed -i 's/^          //' AppDir/BluelinkTokenGenerator.desktop
+          cat > AppDir/AppRun << 'APPRUN'
+          #!/bin/bash
+          SELF=$(readlink -f "$0")
+          HERE=${SELF%/*}
+          exec "$HERE/usr/bin/BluelinkTokenGenerator" "$@"
+          APPRUN
+          sed -i 's/^          //' AppDir/AppRun
+          chmod +x AppDir/AppRun
+          wget -q https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+          chmod +x appimagetool
+          ARCH=x86_64 ./appimagetool --no-appstream AppDir dist/BluelinkTokenGenerator-Linux.AppImage
+
+      - name: Build macOS .app bundle
+        if: matrix.os_name == 'macOS'
+        run: |
+          cd standalone
+          pyinstaller --windowed --onefile --name "Bluelink Token Generator" --add-data "web.py:." --hidden-import curl_cffi --hidden-import Crypto --collect-all curl_cffi --collect-all Crypto bluelink_token.py
+
+      - name: Create macOS DMG
+        if: matrix.os_name == 'macOS'
+        run: |
+          cd standalone/dist
+          mkdir -p dmg_contents
+          cp -R "Bluelink Token Generator.app" dmg_contents/
+          ln -s /Applications dmg_contents/Applications
+          hdiutil create -volname "Bluelink Token Generator" -srcfolder dmg_contents -ov -format UDZO "BluelinkTokenGenerator-macOS.dmg"
+
+      - name: Upload artifact (Windows)
+        if: matrix.os_name == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: BluelinkTokenGenerator.exe
+          path: standalone/dist/BluelinkTokenGenerator.exe
+
+      - name: Upload artifact (Linux)
+        if: matrix.os_name == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: BluelinkTokenGenerator-Linux.AppImage
+          path: standalone/dist/BluelinkTokenGenerator-Linux.AppImage
+
+      - name: Upload artifact (macOS)
+        if: matrix.os_name == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: BluelinkTokenGenerator-macOS.dmg
+          path: standalone/dist/BluelinkTokenGenerator-macOS.dmg
+
+      - name: Upload to release (Windows)
+        if: matrix.os_name == 'Windows'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "v${{ needs.release.outputs.version }}" standalone/dist/BluelinkTokenGenerator.exe --clobber
+
+      - name: Upload to release (Linux)
+        if: matrix.os_name == 'Linux'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "v${{ needs.release.outputs.version }}" standalone/dist/BluelinkTokenGenerator-Linux.AppImage --clobber
+
+      - name: Upload to release (macOS)
+        if: matrix.os_name == 'macOS'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "v${{ needs.release.outputs.version }}" standalone/dist/BluelinkTokenGenerator-macOS.dmg --clobber
