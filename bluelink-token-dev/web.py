@@ -946,6 +946,20 @@ def api_status():
 
 # ── Token API ───────────────────────────────────────────────
 
+def _check_api_auth():
+    """Check API_TOKEN authentication if configured. Returns error response or None."""
+    api_token = os.environ.get("API_TOKEN", "").strip()
+    if not api_token:
+        return None  # No auth configured, allow access
+    # Check Authorization header
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        provided = auth_header[7:].strip()
+        if provided == api_token:
+            return None
+    return jsonify({"ok": False, "error": "Unauthorized. Set Authorization: Bearer <API_TOKEN> header."}), 401
+
+
 @app.route("/api/tokens", methods=["GET"])
 def api_tokens_get():
     """Return current token state for all configured vehicles.
@@ -964,6 +978,10 @@ def api_tokens_get():
         ]
       }
     """
+    auth_error = _check_api_auth()
+    if auth_error:
+        return auth_error
+
     vehicles = _get_vehicles_config()
     result = []
     for v in vehicles:
@@ -1022,6 +1040,10 @@ def api_tokens_generate():
         ]
       }
     """
+    auth_error = _check_api_auth()
+    if auth_error:
+        return auth_error
+
     data = request.get_json(silent=True) or {}
     force = data.get("force", False)
     vehicles = _get_vehicles_config()

@@ -121,6 +121,27 @@ Legacy values `kia` and `hyundai` are aliases for `eu_kia` and `eu_hyundai`.
 
 The container exposes a REST API for programmatic token retrieval — no Web UI interaction needed.
 
+### Authentication
+
+Set the `API_TOKEN` environment variable to secure the API endpoints:
+
+```bash
+docker run -d --name bluelink-token -p 9876:9876 \
+  -e BRAND=eu_kia \
+  -e BLUELINK_USERNAME=your@email.com \
+  -e BLUELINK_PASSWORD=yourpassword \
+  -e API_TOKEN=my-secret-token \
+  ghcr.io/tma84/bluelink-token:latest /run-standalone.sh
+```
+
+Then include the token in your requests:
+
+```bash
+curl -H "Authorization: Bearer my-secret-token" http://localhost:9876/api/tokens
+```
+
+> If `API_TOKEN` is not set, the API is accessible without authentication (suitable for local/localhost use only).
+
 ### `GET /api/tokens`
 
 Returns the current token state for all configured vehicles.
