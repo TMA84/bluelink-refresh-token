@@ -1,5 +1,10 @@
 # Changelog
 
+## 6.3.0
+
+### Neu
+- **Credentials direkt über API** — `POST /api/tokens` akzeptiert jetzt `username`, `password` und `brand` im Request-Body für Token-Generierung ohne Vorkonfiguration
+
 ## 6.2.1
 
 ### Neu
