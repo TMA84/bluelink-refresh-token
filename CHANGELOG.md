@@ -7,6 +7,7 @@
   - `GET /api/tokens` — aktuellen Token-Status aller Fahrzeuge abrufen
   - `POST /api/tokens` — Tokens generieren/erneuern (mit `"force": true` erzwingen)
   - Gibt pro Fahrzeug `refresh_token`, `days_remaining` und `status` zurück
+  - **Optionale Authentifizierung** via `API_TOKEN` Env-Var (Bearer Token)
 - **macOS DMG** — Standalone-App als `.dmg` mit `.app`-Bundle (Drag & Drop in Applications)
 - **Linux AppImage** — universelle Standalone-App für alle Linux-Distributionen
 
