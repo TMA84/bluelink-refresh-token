@@ -22,6 +22,7 @@ options:
   country: "DE"
   evcc_url: ""
   evcc_password: ""
+  api_token: ""
 schema:
   vehicles:
     - brand: list(eu_kia|eu_hyundai)
@@ -30,3 +31,4 @@ schema:
   country: str?
   evcc_url: str?
   evcc_password: password?
+  api_token: password?
