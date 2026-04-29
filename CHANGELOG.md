@@ -1,5 +1,10 @@
 # Changelog
 
+## 6.2.1
+
+### Neu
+- **API_TOKEN in Home Assistant konfigurierbar** — Passwort-Feld in den Addon-Einstellungen zum Absichern der `/api/tokens`-Endpunkte
+
 ## 6.2.0
 
 ### Neu
