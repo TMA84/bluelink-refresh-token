@@ -943,6 +943,165 @@ def _headless_login_eu(username, password, config):
 def api_status():
     return jsonify({"status": state["status"], "log": format_log()})
 
+
+# ── Token API ───────────────────────────────────────────────
+
+@app.route("/api/tokens", methods=["GET"])
+def api_tokens_get():
+    """Return current token state for all configured vehicles.
+    
+    Response:
+      {
+        "vehicles": [
+          {
+            "brand": "eu_kia",
+            "brand_name": "Kia",
+            "username": "user@example.com",
+            "refresh_token": "...",
+            "days_remaining": 165,
+            "status": "valid" | "expiring" | "expired" | "unknown"
+          }
+        ]
+      }
+    """
+    vehicles = _get_vehicles_config()
+    result = []
+    for v in vehicles:
+        if not isinstance(v, dict):
+            continue
+        brand = BRAND_ALIASES.get(v.get("brand", ""), v.get("brand", ""))
+        username = v.get("username", "")
+        if brand not in BRAND_CONFIG or not username:
+            continue
+        config = BRAND_CONFIG[brand]
+        days_left = _check_token_expiry(brand, username)
+        # Check if we have a token in state
+        token = None
+        for sv in state.get("vehicles", []):
+            if sv.get("brand") == brand and sv.get("username") == username and sv.get("status") == "ok":
+                token = sv.get("refresh_token")
+                break
+        if days_left is not None and days_left > 14:
+            status = "valid"
+        elif days_left is not None and days_left > 0:
+            status = "expiring"
+        elif days_left is not None:
+            status = "expired"
+        else:
+            status = "unknown"
+        result.append({
+            "brand": brand,
+            "brand_name": config["brand_name"],
+            "username": username,
+            "refresh_token": token,
+            "days_remaining": days_left,
+            "status": status,
+        })
+    return jsonify({"vehicles": result})
+
+
+@app.route("/api/tokens", methods=["POST"])
+def api_tokens_generate():
+    """Generate tokens for all configured vehicles (or force renew).
+    
+    Request body (optional):
+      { "force": true }   — renew even if token is still valid
+    
+    Response:
+      {
+        "ok": true,
+        "vehicles": [
+          {
+            "brand": "eu_kia",
+            "brand_name": "Kia",
+            "username": "user@example.com",
+            "refresh_token": "...",
+            "status": "ok" | "skipped" | "error",
+            "message": "..."
+          }
+        ]
+      }
+    """
+    data = request.get_json(silent=True) or {}
+    force = data.get("force", False)
+    vehicles = _get_vehicles_config()
+
+    if not vehicles:
+        return jsonify({"ok": False, "error": "No vehicles configured. Set VEHICLES_JSON or BRAND/BLUELINK_USERNAME/BLUELINK_PASSWORD env vars."}), 400
+
+    results = []
+    for i, v in enumerate(vehicles):
+        if not isinstance(v, dict):
+            continue
+        brand = BRAND_ALIASES.get(v.get("brand", ""), v.get("brand", ""))
+        username = v.get("username", "")
+        password = v.get("password", "")
+        if brand not in BRAND_CONFIG or not username or not password:
+            results.append({"brand": brand, "username": username, "status": "error", "message": "Invalid config"})
+            continue
+
+        config = BRAND_CONFIG[brand]
+
+        # Check expiry unless forced
+        if not force:
+            days_left = _check_token_expiry(brand, username)
+            if days_left is not None and days_left > 14:
+                # Return existing token if available
+                existing_token = None
+                for sv in state.get("vehicles", []):
+                    if sv.get("brand") == brand and sv.get("username") == username and sv.get("status") == "ok":
+                        existing_token = sv.get("refresh_token")
+                        break
+                results.append({
+                    "brand": brand, "brand_name": config["brand_name"],
+                    "username": username, "status": "skipped",
+                    "refresh_token": existing_token,
+                    "days_remaining": days_left,
+                    "message": f"Token still valid ({days_left} days remaining)",
+                })
+                continue
+
+        # Generate new token
+        try:
+            result = _headless_login_eu(username, password, config)
+            if result.get("ok"):
+                token = state.get("refresh_token")
+                # Store in vehicles state
+                found = False
+                for sv in state.get("vehicles", []):
+                    if sv.get("brand") == brand and sv.get("username") == username:
+                        sv["refresh_token"] = token
+                        sv["status"] = "ok"
+                        found = True
+                        break
+                if not found:
+                    state.setdefault("vehicles", []).append({
+                        "brand": brand, "brand_name": config["brand_name"],
+                        "username": username, "refresh_token": token,
+                        "access_token": state.get("access_token"), "status": "ok",
+                    })
+                results.append({
+                    "brand": brand, "brand_name": config["brand_name"],
+                    "username": username, "status": "ok",
+                    "refresh_token": token,
+                    "message": "Token generated successfully",
+                })
+            else:
+                results.append({
+                    "brand": brand, "brand_name": config["brand_name"],
+                    "username": username, "status": "error",
+                    "message": result.get("error", "Login failed"),
+                })
+        except Exception as e:
+            results.append({
+                "brand": brand, "brand_name": config["brand_name"],
+                "username": username, "status": "error",
+                "message": str(e),
+            })
+
+    has_error = any(r["status"] == "error" for r in results)
+    return jsonify({"ok": not has_error, "vehicles": results})
+
 # ── evcc Integration ────────────────────────────────────────
 
 @app.route("/api/evcc/vehicles", methods=["POST"])

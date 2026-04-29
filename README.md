@@ -117,6 +117,65 @@ Legacy values `kia` and `hyundai` are aliases for `eu_kia` and `eu_hyundai`.
 
 > **Password requirements:** 8–20 characters, at least one uppercase letter, one lowercase letter, one digit, and one special character.
 
+## API
+
+The container exposes a REST API for programmatic token retrieval — no Web UI interaction needed.
+
+### `GET /api/tokens`
+
+Returns the current token state for all configured vehicles.
+
+```bash
+curl http://localhost:9876/api/tokens
+```
+
+```json
+{
+  "vehicles": [
+    {
+      "brand": "eu_kia",
+      "brand_name": "Kia",
+      "username": "user@example.com",
+      "refresh_token": "eyJ...",
+      "days_remaining": 165,
+      "status": "valid"
+    }
+  ]
+}
+```
+
+Status values: `valid` (>14 days), `expiring` (≤14 days), `expired`, `unknown` (no token yet).
+
+### `POST /api/tokens`
+
+Generate (or renew) tokens for all configured vehicles. Only renews if the token is expiring or unknown — use `"force": true` to always regenerate.
+
+```bash
+# Only renew if needed
+curl -X POST http://localhost:9876/api/tokens
+
+# Force renew all tokens
+curl -X POST http://localhost:9876/api/tokens -H "Content-Type: application/json" -d '{"force": true}'
+```
+
+```json
+{
+  "ok": true,
+  "vehicles": [
+    {
+      "brand": "eu_kia",
+      "brand_name": "Kia",
+      "username": "user@example.com",
+      "refresh_token": "eyJ...",
+      "status": "ok",
+      "message": "Token generated successfully"
+    }
+  ]
+}
+```
+
+Vehicle status: `ok` (new token generated), `skipped` (still valid), `error` (login failed).
+
 ## Where to use the token
 
 Use the refresh token as the **password** (not your Bluelink password) when configuring:
