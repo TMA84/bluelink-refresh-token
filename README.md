@@ -167,7 +167,7 @@ curl http://localhost:9876/api/tokens
 
 Status values: `valid` (>14 days), `expiring` (≤14 days), `expired`, `unknown` (no token yet).
 
-> **Note:** The token is only available via `GET /api/tokens` while the container is running and a token has been generated in the current session. Tokens are stored in memory only — after a container restart, you need to call `POST /api/tokens` first to generate a new token. The generated refresh token itself is valid for **180 days** at the Kia/Hyundai API.
+> **Note:** The token is only available via `GET /api/tokens` while the container is running and a token has been generated in the current session. Tokens are cleared from memory on container restart, when the "Reset" button is clicked, or automatically 30 seconds after an evcc transfer. After that, call `POST /api/tokens` to generate a new token. The generated refresh token itself is valid for **180 days** at the Kia/Hyundai API.
 
 ### `POST /api/tokens`
 
