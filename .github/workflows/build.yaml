@@ -53,7 +53,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          NOTES=$(awk "/^## ${VERSION}\$/,/^## [0-9]/" CHANGELOG.md | sed '1d;/^## [0-9]/d' | sed -e :a -e '/^\n*$/{$d;N;ba}')
+          NOTES=$(awk -v ver="$VERSION" 'BEGIN{p=0} $0 ~ "^## "ver{p=1; next} /^## [0-9]/{p=0} p' CHANGELOG.md | sed -e :a -e '/^\n*$/{$d;N;ba}')
           if [ -z "$NOTES" ]; then
             NOTES="Release v${VERSION}"
           fi
