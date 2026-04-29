@@ -37,11 +37,47 @@ jobs:
       - name: Install dependencies
         run: pip install -r standalone/requirements.txt
 
-      - name: Build executable (Windows/Linux)
-        if: matrix.os_name != 'macOS'
+      - name: Build executable (Windows)
+        if: matrix.os_name == 'Windows'
         run: |
           cd standalone
           pyinstaller --onefile --name ${{ matrix.artifact }} --add-data "web.py${{ matrix.pyinstaller_sep }}." --hidden-import curl_cffi --hidden-import Crypto --collect-all curl_cffi --collect-all Crypto bluelink_token.py
+
+      - name: Build executable (Linux)
+        if: matrix.os_name == 'Linux'
+        run: |
+          cd standalone
+          pyinstaller --onefile --name ${{ matrix.artifact }} --add-data "web.py:." --hidden-import curl_cffi --hidden-import Crypto --collect-all curl_cffi --collect-all Crypto bluelink_token.py
+
+      - name: Create Linux AppImage
+        if: matrix.os_name == 'Linux'
+        run: |
+          cd standalone
+          mkdir -p AppDir/usr/bin AppDir/usr/share/icons/hicolor/256x256/apps
+          cp dist/BluelinkTokenGenerator-Linux AppDir/usr/bin/BluelinkTokenGenerator
+          cp ../bluelink-token/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/bluelink-token.png
+          cp ../bluelink-token/icon.png AppDir/bluelink-token.png
+          cat > AppDir/BluelinkTokenGenerator.desktop << 'EOF'
+          [Desktop Entry]
+          Name=Bluelink Token Generator
+          Exec=BluelinkTokenGenerator
+          Icon=bluelink-token
+          Type=Application
+          Categories=Utility;
+          Comment=Generate Hyundai/Kia Bluelink refresh tokens
+          EOF
+          sed -i 's/^          //' AppDir/BluelinkTokenGenerator.desktop
+          cat > AppDir/AppRun << 'APPRUN'
+          #!/bin/bash
+          SELF=$(readlink -f "$0")
+          HERE=${SELF%/*}
+          exec "$HERE/usr/bin/BluelinkTokenGenerator" "$@"
+          APPRUN
+          sed -i 's/^          //' AppDir/AppRun
+          chmod +x AppDir/AppRun
+          wget -q https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+          chmod +x appimagetool
+          ARCH=x86_64 ./appimagetool --no-appstream AppDir dist/BluelinkTokenGenerator-Linux.AppImage
 
       - name: Build macOS .app bundle
         if: matrix.os_name == 'macOS'
@@ -58,12 +94,19 @@ jobs:
           ln -s /Applications dmg_contents/Applications
           hdiutil create -volname "Bluelink Token Generator" -srcfolder dmg_contents -ov -format UDZO "BluelinkTokenGenerator-macOS.dmg"
 
-      - name: Upload artifact
-        if: matrix.os_name != 'macOS'
+      - name: Upload artifact (Windows)
+        if: matrix.os_name == 'Windows'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: standalone/dist/${{ matrix.artifact }}*
+          path: standalone/dist/${{ matrix.artifact }}
+
+      - name: Upload artifact (Linux AppImage)
+        if: matrix.os_name == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: BluelinkTokenGenerator-Linux.AppImage
+          path: standalone/dist/BluelinkTokenGenerator-Linux.AppImage
 
       - name: Upload macOS artifact
         if: matrix.os_name == 'macOS'
@@ -72,13 +115,21 @@ jobs:
           name: BluelinkTokenGenerator-macOS.dmg
           path: standalone/dist/BluelinkTokenGenerator-macOS.dmg
 
-      - name: Upload to release
-        if: startsWith(github.ref, 'refs/tags/v') && matrix.os_name != 'macOS'
+      - name: Upload Windows to release
+        if: startsWith(github.ref, 'refs/tags/v') && matrix.os_name == 'Windows'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
-          gh release upload "${{ github.ref_name }}" standalone/dist/${{ matrix.artifact }}* --clobber
+          gh release upload "${{ github.ref_name }}" standalone/dist/${{ matrix.artifact }} --clobber
+
+      - name: Upload Linux AppImage to release
+        if: startsWith(github.ref, 'refs/tags/v') && matrix.os_name == 'Linux'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          gh release upload "${{ github.ref_name }}" standalone/dist/BluelinkTokenGenerator-Linux.AppImage --clobber
 
       - name: Upload macOS DMG to release
         if: startsWith(github.ref, 'refs/tags/v') && matrix.os_name == 'macOS'
