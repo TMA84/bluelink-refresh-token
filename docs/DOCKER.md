@@ -117,6 +117,36 @@ services:
     command: ["/run-standalone.sh"]
 ```
 
+## Automatic Token Renewal
+
+The container checks token expiry on every start. If a token has less than 14 days remaining, it is automatically renewed. To automate this:
+
+### Option 1: Cron-based API call (recommended)
+
+Keep the container running and use a cron job to periodically trigger token renewal:
+
+```bash
+# Crontab: check and renew tokens once per week
+0 3 * * 1 curl -s -X POST http://localhost:9876/api/tokens > /dev/null
+```
+
+This only generates a new token if the existing one is about to expire (<14 days). No unnecessary logins.
+
+### Option 2: Container restart via cron
+
+```bash
+# Crontab: restart container once per week (triggers expiry check on start)
+0 3 * * 1 docker restart bluelink-token
+```
+
+### Option 3: With API_TOKEN (secured)
+
+```bash
+0 3 * * 1 curl -s -X POST http://localhost:9876/api/tokens -H "Authorization: Bearer my-secret-token" > /dev/null
+```
+
+> **Note:** Monthly or more frequent renewal is not recommended. Each token generation is a full login at Kia/Hyundai — too many logins could trigger rate limiting. The 14-day threshold provides enough buffer for retries if a login fails.
+
 ## Supported Architectures
 
 The image is a multi-arch manifest:
