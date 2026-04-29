@@ -732,7 +732,36 @@ def reset():
     state.update({"status": "idle", "refresh_token": None, "access_token": None,
                   "error": None, "test_result": "", "log": [], "brand_override": None,
                   "vehicles": []})
+    _cancel_auto_reset()
     return flask_redirect("/")
+
+
+_auto_reset_timer = {"timer": None}
+
+
+def _cancel_auto_reset():
+    """Cancel any pending auto-reset timer."""
+    if _auto_reset_timer["timer"]:
+        _auto_reset_timer["timer"].cancel()
+        _auto_reset_timer["timer"] = None
+
+
+def _schedule_auto_reset():
+    """Schedule auto-reset after 5 minutes if no API_TOKEN is configured."""
+    api_token = os.environ.get("API_TOKEN", "").strip()
+    if api_token:
+        return  # API_TOKEN set → keep tokens available permanently
+    _cancel_auto_reset()
+
+    def do_reset():
+        state.update({"status": "idle", "refresh_token": None, "access_token": None,
+                      "error": None, "test_result": "", "log": [], "brand_override": None,
+                      "vehicles": []})
+        print("[AUTO] Token cleared from memory after 5 minutes.", flush=True)
+
+    _auto_reset_timer["timer"] = threading.Timer(300, do_reset)
+    _auto_reset_timer["timer"].daemon = True
+    _auto_reset_timer["timer"].start()
 
 @app.route("/test", methods=["POST"])
 def test_token():
@@ -932,6 +961,7 @@ def _headless_login_eu(username, password, config):
     state["access_token"] = tokens.get("access_token", "N/A")
     state["status"] = "success"
     log("Token generated successfully via headless login!", "ok")
+    _schedule_auto_reset()
     # Determine brand from config for sensor/timestamp
     _brand = next((k for k, v in BRAND_CONFIG.items() if v.get("client_id") == config.get("client_id")), "eu_kia")
     update_ha_sensor(_brand, username)
@@ -1015,6 +1045,15 @@ def api_tokens_get():
             "days_remaining": days_left,
             "status": status,
         })
+
+    # If no API_TOKEN is configured, clear tokens after retrieval
+    api_token = os.environ.get("API_TOKEN", "").strip()
+    if not api_token and any(r.get("refresh_token") for r in result):
+        _cancel_auto_reset()
+        state.update({"status": "idle", "refresh_token": None, "access_token": None,
+                      "error": None, "test_result": "", "log": [], "brand_override": None,
+                      "vehicles": []})
+
     return jsonify({"vehicles": result})
 
 
@@ -1390,9 +1429,12 @@ def _auto_start_login(force=False):
         evcc_password = os.environ.get("EVCC_PASSWORD", "")
         if evcc_url:
             _auto_evcc_transfer(evcc_url, evcc_password)
+        else:
+            _schedule_auto_reset()
     elif state["vehicles"]:
         state["status"] = "success"  # partial success
         log("Auto-start: some vehicles failed, check log.", "warn")
+        _schedule_auto_reset()
     else:
         state["status"] = "idle"
         log("Auto-start: no vehicles processed.", "warn")
