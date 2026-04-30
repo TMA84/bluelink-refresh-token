@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "Check GitHub Issues & PRs",
+  "description": "Checks for open issues and pull requests on the repository and summarizes any new activity.",
+  "version": "1",
+  "when": {
+    "type": "userTriggered"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Run `gh issue list --state open` and `gh pr list --state open` to check for new issues and pull requests. Summarize what's open, highlight anything new or unresponded, and suggest next actions."
+  }
+}
