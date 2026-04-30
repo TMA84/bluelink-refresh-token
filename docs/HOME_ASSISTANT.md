@@ -19,8 +19,8 @@
 3. Configure the app (see below).
 4. Start the app — tokens are generated automatically.
 
-[repo-badge]: https://my.home-assistant.io/badges/supervisor_add_app_repository.svg
-[repo-url]: https://my.home-assistant.io/redirect/supervisor_add_app_repository/?repository_url=https%3A%2F%2Fgithub.com%2FTMA84%2Fbluelink-refresh-token
+[repo-badge]: https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg
+[repo-url]: https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FTMA84%2Fbluelink-refresh-token
 
 ## Configuration
 
