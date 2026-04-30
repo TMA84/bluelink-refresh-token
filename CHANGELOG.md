@@ -1,5 +1,11 @@
 # Changelog
 
+## 6.3.2
+
+### Fix
+- **HA-Sensor wird jetzt auch bei gültigem Token erstellt** — bisher wurde der Sensor nur bei Neugenerierung angelegt, jetzt auch wenn der Token übersprungen wird (#11)
+- **Vehicle-Count im Log korrigiert** — zeigte fälschlicherweise die Anzahl der JSON-Keys statt der Fahrzeuge
+
 ## 6.3.1
 
 ### Verbessert
