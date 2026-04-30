@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <a href="https://buymeacoffee.com/tobiasmalct"><img src="https://img.shields.io/badge/Buy_me_a_coffee-☕-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy me a coffee"></a>
+  <a href="https://buymeacoffee.com/tobiasmalct"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy me a coffee" width="217"></a>
 </p>
 
 ---
@@ -47,7 +47,7 @@ Developed by reverse engineering the official Kia Connect App. Uses `curl_cffi` 
 
 This project is developed and maintained in my free time. If it saves you time or helps you get your Kia/Hyundai connected, I'd appreciate your support:
 
-<a href="https://buymeacoffee.com/tobiasmalct"><img src="https://img.shields.io/badge/Buy_me_a_coffee-☕-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy me a coffee"></a>
+<a href="https://buymeacoffee.com/tobiasmalct"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy me a coffee" width="217"></a>
 
 ## Quick Start
 
