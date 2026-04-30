@@ -25,7 +25,16 @@ export EVCC_PASSWORD
 export API_TOKEN
 
 bashio::log.info "Starting Bluelink Token Generator..."
-vehicle_count=$(echo "$VEHICLES_JSON" | python3 -c "import sys,json; print(len(json.loads(sys.stdin.read())))" 2>/dev/null || echo "0")
+vehicle_count=$(echo "$VEHICLES_JSON" | python3 -c "
+import sys, json
+data = json.loads(sys.stdin.read())
+if isinstance(data, list):
+    print(len([v for v in data if isinstance(v, dict) and 'brand' in v]))
+elif isinstance(data, dict) and 'brand' in data:
+    print(1)
+else:
+    print(0)
+" 2>/dev/null || echo "0")
 bashio::log.info "Vehicles configured: ${vehicle_count}"
 bashio::log.info "Web UI available at port 9877"
 

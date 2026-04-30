@@ -274,14 +274,19 @@ def _vehicle_key(brand, username):
     return f"{brand}_{hashlib.md5(username.encode()).hexdigest()[:8]}"
 
 
-def update_ha_sensor(brand, username=""):
+def update_ha_sensor(brand, username="", days_remaining=None):
     """Create/update a Home Assistant sensor with the token expiry date (per vehicle)."""
     supervisor_token = os.environ.get("SUPERVISOR_TOKEN")
     if not supervisor_token:
         return
     try:
         now = datetime.now(timezone.utc)
-        expiry = now + timedelta(days=TOKEN_EXPIRY_DAYS)
+        if days_remaining is not None:
+            expiry = now + timedelta(days=days_remaining)
+            remaining = days_remaining
+        else:
+            expiry = now + timedelta(days=TOKEN_EXPIRY_DAYS)
+            remaining = TOKEN_EXPIRY_DAYS
         headers = {
             "Authorization": f"Bearer {supervisor_token}",
             "Content-Type": "application/json",
@@ -296,9 +301,9 @@ def update_ha_sensor(brand, username=""):
                 "friendly_name": f"Bluelink Token ({brand_name} {masked_user})",
                 "device_class": "date",
                 "icon": "mdi:key-clock",
-                "generated": now.strftime("%Y-%m-%d %H:%M"),
+                "generated": (now - timedelta(days=TOKEN_EXPIRY_DAYS - remaining)).strftime("%Y-%m-%d %H:%M"),
                 "expires": expiry.strftime("%Y-%m-%d %H:%M"),
-                "days_remaining": TOKEN_EXPIRY_DAYS,
+                "days_remaining": remaining,
                 "brand": brand,
                 "username": username,
             },
@@ -1391,6 +1396,7 @@ def _auto_start_login(force=False):
             days_left = _check_token_expiry(brand, username)
             if days_left is not None and days_left > 14:
                 log(f"Vehicle {i+1}: {config['brand_name']} — token still valid ({days_left} days). Skipping.", "ok")
+                update_ha_sensor(brand, username, days_remaining=days_left)
                 continue
             elif days_left is not None:
                 log(f"Vehicle {i+1}: {config['brand_name']} — token expires in {days_left} days, renewing...")
