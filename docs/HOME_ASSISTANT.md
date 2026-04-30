@@ -6,7 +6,11 @@
 
    [![Open your Home Assistant instance and show the add app repository dialog.][repo-badge]][repo-url]
 
-   Or manually: **Settings → Add-ons → Add-ons store (bottom right) → ⋮ → Repositories** and paste:
+   Or manually:
+   - **English:** Settings → Add-ons → Add-on store (bottom right) → ⋮ → Repositories
+   - **Deutsch:** Einstellungen → Apps → Apps installieren → ⋮ → Repositories
+
+   Paste:
    ```
    https://github.com/TMA84/bluelink-refresh-token
    ```
@@ -154,10 +158,11 @@ Use the refresh token as the **password** (not your Bluelink password) when conf
 - [evcc](https://docs.evcc.io/en/docs/devices/vehicles#hyundai-bluelink) — Hyundai/Kia vehicle integration
 - [Home Assistant Kia/Hyundai integration](https://github.com/Hyundai-Kia-Connect/kia_uvo)
 
-## For EU, homeassistant Kia/Hyundai Uvo:
-follow readme of repo below, with below specified values:
-[Home Assistant Kia/Hyundai integration](https://github.com/Hyundai-Kia-Connect/kia_uvo)
-- Use your kia/Hyundai account email for 'username'
-- Use above generated token for 'token'
-- leave 'pin' empty
+## Using the token with Kia/Hyundai Connect integration
+
+When configuring the [Home Assistant Kia/Hyundai integration](https://github.com/Hyundai-Kia-Connect/kia_uvo):
+
+- **Username:** Your Kia/Hyundai account email
+- **Token:** The generated refresh token (not your Bluelink password)
+- **PIN:** Leave empty
 
