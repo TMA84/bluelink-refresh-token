@@ -1,5 +1,10 @@
 # Changelog
 
+## 6.3.3
+
+### Fix
+- **HA-Sensor bleibt dauerhaft erhalten** — Sensor wird alle 30 Minuten automatisch neu publiziert, damit er auch nach HA-Neustarts bestehen bleibt (#11)
+
 ## 6.3.2
 
 ### Fix

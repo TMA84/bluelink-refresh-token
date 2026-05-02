@@ -1552,5 +1552,35 @@ def _schedule_auto_start():
 threading.Thread(target=_schedule_auto_start, daemon=True).start()
 print("[AUTO] Auto-start thread scheduled", flush=True)
 
+
+# Periodic HA sensor refresh (every 30 minutes)
+def _sensor_refresh_loop():
+    """Periodically re-publish HA sensors so they survive HA restarts."""
+    import sys
+    INTERVAL = 30 * 60  # 30 minutes
+    time.sleep(INTERVAL)  # first run after 30 min (auto-start already sets it)
+    while True:
+        try:
+            supervisor_token = os.environ.get("SUPERVISOR_TOKEN")
+            if not supervisor_token:
+                break  # not running as HA addon, stop loop
+            vehicles = _get_vehicles_config()
+            for v in vehicles:
+                if not isinstance(v, dict):
+                    continue
+                brand = BRAND_ALIASES.get(v.get("brand", ""), v.get("brand", ""))
+                username = v.get("username", "")
+                if brand not in BRAND_CONFIG or not username:
+                    continue
+                days_left = _check_token_expiry(brand, username)
+                if days_left is not None:
+                    update_ha_sensor(brand, username, days_remaining=days_left)
+        except Exception as e:
+            print(f"[SENSOR] Refresh error: {e}", file=sys.stderr, flush=True)
+        time.sleep(INTERVAL)
+
+threading.Thread(target=_sensor_refresh_loop, daemon=True).start()
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=9876)
