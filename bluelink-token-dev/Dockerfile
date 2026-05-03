@@ -23,6 +23,7 @@ WORKDIR /app
 
 COPY web.py /app/
 COPY ha_kia_uvo.py /app/
+COPY ha_evcc.py /app/
 COPY config.yaml /app/
 COPY run.sh /
 COPY run-standalone.sh /

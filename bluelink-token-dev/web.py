@@ -13,6 +13,12 @@ from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_v1_5
 
 from ha_kia_uvo import _auto_kia_uvo_transfer, _kia_uvo_config
+from ha_evcc import (
+    _auto_evcc_transfer as _auto_evcc_transfer_impl,
+    evcc_get_vehicles,
+    evcc_update_vehicle,
+    evcc_restart as evcc_restart_impl,
+)
 
 app = Flask(__name__)
 
@@ -1372,45 +1378,7 @@ def evcc_vehicles():
     data = request.get_json()
     evcc_url = data.get("url", "").rstrip("/")
     password = data.get("password", "")
-    if not evcc_url:
-        return jsonify({"ok": False, "error": "No evcc URL provided"})
-    try:
-        session = req_lib.Session()
-        session.verify = False
-        # Check if auth is required
-        auth_resp = session.get(f"{evcc_url}/api/auth/status", timeout=10)
-        needs_auth = auth_resp.status_code == 200 and auth_resp.text.strip() == "false"
-        if needs_auth:
-            if not password:
-                return jsonify({"ok": False, "error": "evcc requires admin password"})
-            resp = session.post(f"{evcc_url}/api/auth/login",
-                                json={"password": password}, timeout=10)
-            if resp.status_code == 401:
-                return jsonify({"ok": False, "error": "Invalid admin password"})
-            if resp.status_code != 200:
-                return jsonify({"ok": False, "error": f"Login failed ({resp.status_code})"})
-        # Get vehicles
-        resp = session.get(f"{evcc_url}/api/config/devices/vehicle", timeout=10)
-        if resp.status_code == 401:
-            return jsonify({"ok": False, "error": "Authentication required — please enter your evcc admin password"})
-        if resp.status_code != 200:
-            return jsonify({"ok": False, "error": f"Could not fetch vehicles ({resp.status_code})"})
-        vehicles = resp.json()
-        # Filter for Hyundai/Kia templates
-        result = []
-        for v in vehicles:
-            cfg = v.get("config", {})
-            tmpl = cfg.get("template", "")
-            if tmpl in ("hyundai", "kia"):
-                result.append({
-                    "id": v.get("id"),
-                    "name": v.get("name", ""),
-                    "title": cfg.get("title", v.get("name", "")),
-                    "template": tmpl,
-                })
-        return jsonify({"ok": True, "vehicles": result})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)})
+    return jsonify(evcc_get_vehicles(evcc_url, password))
 
 @app.route("/api/evcc/update", methods=["POST"])
 def evcc_update():
@@ -1420,42 +1388,7 @@ def evcc_update():
     password = data.get("password", "")
     vehicle_id = data.get("vehicle_id")
     token = state.get("refresh_token")
-    if not all([evcc_url, vehicle_id, token]):
-        return jsonify({"ok": False, "error": "Missing parameters"})
-    try:
-        session = req_lib.Session()
-        session.verify = False
-        # Check if auth is required and login
-        auth_resp = session.get(f"{evcc_url}/api/auth/status", timeout=10)
-        needs_auth = auth_resp.status_code == 200 and auth_resp.text.strip() == "false"
-        if needs_auth:
-            resp = session.post(f"{evcc_url}/api/auth/login",
-                                json={"password": password}, timeout=10)
-            if resp.status_code != 200:
-                return jsonify({"ok": False, "error": f"Login failed ({resp.status_code})"})
-        # Get current vehicle config
-        resp = session.get(f"{evcc_url}/api/config/devices/vehicle/{vehicle_id}", timeout=10)
-        if resp.status_code != 200:
-            return jsonify({"ok": False, "error": f"Could not fetch vehicle ({resp.status_code})"})
-        vehicle = resp.json()
-        cfg = vehicle.get("config", {})
-        # Update password with refresh token
-        cfg["password"] = token
-        payload = {"type": vehicle.get("type", "template")}
-        payload.update(cfg)
-        # Test first
-        resp = session.post(f"{evcc_url}/api/config/test/vehicle/merge/{vehicle_id}",
-                            json=payload, timeout=30)
-        if resp.status_code != 200:
-            return jsonify({"ok": False, "error": f"Token test failed ({resp.status_code}): {resp.text[:200]}"})
-        # Apply update
-        resp = session.put(f"{evcc_url}/api/config/devices/vehicle/{vehicle_id}",
-                           json=payload, timeout=15)
-        if resp.status_code != 200:
-            return jsonify({"ok": False, "error": f"Update failed ({resp.status_code}): {resp.text[:200]}"})
-        return jsonify({"ok": True})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)})
+    return jsonify(evcc_update_vehicle(evcc_url, password, vehicle_id, token))
 
 @app.route("/api/evcc/restart", methods=["POST"])
 def evcc_restart():
@@ -1463,52 +1396,7 @@ def evcc_restart():
     data = request.get_json()
     evcc_url = data.get("url", "").rstrip("/")
     password = data.get("password", "")
-    if not evcc_url:
-        return jsonify({"ok": False, "error": "No evcc URL provided"})
-
-    # Try HA Supervisor API first (if running as HA addon)
-    supervisor_token = os.environ.get("SUPERVISOR_TOKEN")
-    if supervisor_token:
-        try:
-            headers = {"Authorization": f"Bearer {supervisor_token}"}
-            # List all addons to find evcc
-            resp = req_lib.get("http://supervisor/addons", headers=headers, timeout=10)
-            if resp.status_code == 200:
-                addons = resp.json().get("data", {}).get("addons", [])
-                evcc_slug = None
-                for addon in addons:
-                    name = (addon.get("name", "") or "").lower()
-                    slug = (addon.get("slug", "") or "").lower()
-                    if "evcc" in name or "evcc" in slug:
-                        evcc_slug = addon.get("slug")
-                        break
-                if evcc_slug:
-                    resp = req_lib.post(f"http://supervisor/addons/{evcc_slug}/restart",
-                                        headers=headers, timeout=60)
-                    if resp.status_code == 200:
-                        return jsonify({"ok": True})
-                    return jsonify({"ok": False, "error": f"Supervisor restart failed ({resp.status_code})"})
-        except Exception:
-            pass  # Fall through to evcc shutdown
-
-    # Fallback: evcc shutdown endpoint (for Docker/native installs)
-    try:
-        session = req_lib.Session()
-        session.verify = False
-        auth_resp = session.get(f"{evcc_url}/api/auth/status", timeout=10)
-        needs_auth = auth_resp.status_code == 200 and auth_resp.text.strip() == "false"
-        if needs_auth and password:
-            session.post(f"{evcc_url}/api/auth/login",
-                         json={"password": password}, timeout=10)
-        resp = session.post(f"{evcc_url}/api/system/shutdown", timeout=10)
-        if resp.status_code in (200, 204):
-            return jsonify({"ok": True})
-        return jsonify({"ok": False, "error": f"Restart failed ({resp.status_code})"})
-    except req_lib.exceptions.ConnectionError:
-        # Connection error is expected — evcc is shutting down
-        return jsonify({"ok": True})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)})
+    return jsonify(evcc_restart_impl(evcc_url, password))
 
 
 # ── kia_uvo Integration ────────────────────────────────────────
@@ -1845,97 +1733,7 @@ function kiaUvoSendToken() {{
 
 def _auto_evcc_transfer(evcc_url, evcc_password):
     """Auto-transfer refresh token to evcc after successful login."""
-    try:
-        log(f"Auto-start: connecting to evcc ({evcc_url})...")
-        session = req_lib.Session()
-        session.verify = False
-        session.verify = False  # Allow self-signed certs
-        # Login if needed
-        auth_resp = session.get(f"{evcc_url}/api/auth/status", timeout=10)
-        if auth_resp.status_code == 200 and auth_resp.text.strip() == "false":
-            if evcc_password:
-                session.post(f"{evcc_url}/api/auth/login",
-                             json={"password": evcc_password}, timeout=10)
-        # Get vehicles
-        resp = session.get(f"{evcc_url}/api/config/devices/vehicle", timeout=10)
-        if resp.status_code != 200:
-            log(f"Auto-start: could not fetch evcc vehicles ({resp.status_code})", "warn")
-            return
-        data = resp.json()
-        all_vehicles = data.get("result", data) if isinstance(data, dict) else data
-        if not isinstance(all_vehicles, list):
-            all_vehicles = []
-        vehicles = [v for v in all_vehicles
-                    if isinstance(v, dict) and any(t in str(v.get("config", v)).lower()
-                           for t in ("hyundai", "kia", "bluelink"))]
-        if not vehicles:
-            log("Auto-start: no Hyundai/Kia vehicles found in evcc", "warn")
-            return
-        log(f"Auto-start: found {len(vehicles)} vehicle(s) in evcc", "ok")
-        # Build a map of brand → token from generated vehicles
-        token_map = {}
-        for sv in state.get("vehicles", []):
-            if sv.get("status") == "ok" and sv.get("refresh_token"):
-                # Map both "kia" and "hyundai" to match evcc template names
-                brand_name = sv.get("brand_name", "").lower()
-                token_map[brand_name] = sv["refresh_token"]
-        if not token_map:
-            # Fallback: use the last generated token for all
-            token_map["kia"] = state.get("refresh_token", "")
-            token_map["hyundai"] = state.get("refresh_token", "")
-        log(f"Auto-start: tokens available for: {', '.join(token_map.keys())}")
-
-        for v in vehicles:
-            vid = v["id"]
-            title = v.get("config", {}).get("title", f"Vehicle {vid}")
-            try:
-                # Get current config
-                cfg_resp = session.get(f"{evcc_url}/api/config/devices/vehicle/{vid}", timeout=10)
-                if cfg_resp.status_code != 200:
-                    log(f"Auto-start: could not fetch config for {title}", "warn")
-                    continue
-                vehicle_data = cfg_resp.json()
-                cfg = vehicle_data.get("config", {})
-                # Find the right token for this vehicle's brand
-                tmpl = cfg.get("template", "").lower()
-                token = token_map.get(tmpl, token_map.get("kia", token_map.get("hyundai", "")))
-                if not token:
-                    log(f"Auto-start: no token available for {title} (template: {tmpl})", "warn")
-                    continue
-                cfg["password"] = token
-                payload = {"type": vehicle_data.get("type", "template")}
-                payload.update(cfg)
-                # Test + apply
-                session.post(f"{evcc_url}/api/config/test/vehicle/merge/{vid}",
-                             json=payload, timeout=30)
-                resp = session.put(f"{evcc_url}/api/config/devices/vehicle/{vid}",
-                                   json=payload, timeout=15)
-                if resp.status_code == 200:
-                    log(f"Auto-start: token sent to {title}", "ok")
-                else:
-                    log(f"Auto-start: failed to update {title} ({resp.status_code}): {resp.text[:200]}", "warn")
-            except Exception as e:
-                log(f"Auto-start: error updating {title}: {e}", "warn")
-        # Restart evcc
-        log("Auto-start: restarting evcc...")
-        supervisor_token = os.environ.get("SUPERVISOR_TOKEN")
-        if supervisor_token:
-            try:
-                resp = req_lib.post("http://supervisor/addons/a0d7b954_evcc/restart",
-                                    headers={"Authorization": f"Bearer {supervisor_token}"},
-                                    timeout=30)
-                if resp.status_code == 200:
-                    log("Auto-start: evcc restarted via HA Supervisor", "ok")
-                    return
-            except Exception:
-                pass
-        try:
-            session.post(f"{evcc_url}/api/system/shutdown", timeout=10)
-            log("Auto-start: evcc restart triggered", "ok")
-        except Exception:
-            log("Auto-start: could not restart evcc automatically", "warn")
-    except Exception as e:
-        log(f"Auto-start: evcc transfer error: {e}", "warn")
+    _auto_evcc_transfer_impl(evcc_url, evcc_password, state, log_fn=log)
 
 # Auto-start on module load
 def _schedule_auto_start():
