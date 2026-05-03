@@ -95,10 +95,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Sync web.py to addon folders
+      - name: Sync modules to addon folder
         run: |
-          cp standalone/web.py bluelink-token/web.py
-          cp standalone/web.py bluelink-token-dev/web.py
+          cp bluelink-token-dev/web.py bluelink-token/web.py
+          cp bluelink-token-dev/kia_uvo.py bluelink-token/kia_uvo.py
+          cp bluelink-token-dev/evcc.py bluelink-token/evcc.py
 
       - name: Build image
         uses: home-assistant/builder/actions/build-image@2026.03.2
