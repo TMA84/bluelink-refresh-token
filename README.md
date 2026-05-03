@@ -51,6 +51,17 @@ This project is developed and maintained in my free time. If it saves you time o
 
 ## Quick Start
 
+### Which installation method is right for you?
+
+| Your setup | Recommended method |
+|---|---|
+| Home Assistant OS (HAOS) or Supervised | [Home Assistant Add-on](#home-assistant) |
+| Home Assistant Container (Docker) | [Docker](#docker--podman) |
+| NAS (Synology, QNAP, Unraid) | [Docker](#docker--podman) |
+| No Docker, no Home Assistant | [Standalone App](#standalone-apps-windows-macos-linux) |
+
+> **Note:** The Home Assistant Add-on requires **Home Assistant OS** or **Supervised** installation. If you run HA as a Docker container (e.g. on a NAS), use the Docker method instead — it works alongside your existing HA container. This is **not** a HACS integration — it's a standalone tool that generates tokens for use with the [Kia/Hyundai Connect integration](https://github.com/Hyundai-Kia-Connect/kia_uvo).
+
 ### Home Assistant
 
 → **[Home Assistant Setup Guide](docs/HOME_ASSISTANT.md)**
@@ -63,6 +74,8 @@ This project is developed and maintained in my free time. If it saves you time o
 ### Docker / Podman
 
 → **[Docker Setup Guide](docs/DOCKER.md)**
+
+Works on any system with Docker: Linux servers, Synology/QNAP NAS, Unraid, or alongside an existing HA Container installation.
 
 ```bash
 docker run -d --name bluelink-token -p 9876:9876 \
@@ -220,6 +233,28 @@ Use the refresh token as the **password** (not your Bluelink password) when conf
 
 - [evcc](https://docs.evcc.io/en/docs/devices/vehicles#hyundai-bluelink) — Hyundai/Kia vehicle integration
 - [Home Assistant Kia/Hyundai integration](https://github.com/Hyundai-Kia-Connect/kia_uvo)
+
+## FAQ
+
+### I can't find this in HACS
+
+This is not a HACS integration. It's a Home Assistant **Add-on** that requires HAOS or Supervised. If you run HA as a Docker container (e.g. on a NAS), use the [Docker setup](docs/DOCKER.md) instead.
+
+### I don't have an Add-on store in Home Assistant
+
+Your HA installation is likely the "Container" type (common on NAS systems). The Add-on store is only available on HAOS and Supervised installations. Use the [Docker method](docs/DOCKER.md) — it runs as a separate container alongside your HA.
+
+### Does this work on Synology / QNAP / Unraid?
+
+Yes. Use the [Docker setup](docs/DOCKER.md) — there are NAS-specific instructions for Synology, QNAP, and Unraid.
+
+### What's the difference between this and the old browser-based scripts?
+
+The old scripts (e.g. from RustyDust/bluelink_refresh_token) used Selenium/Playwright to automate a real browser. They broke when Kia/Hyundai added bot detection. This tool works **headless** by reverse-engineering the official app's API calls — no browser, no CAPTCHA, no bot detection issues.
+
+### I get "classified as an abusing request and blocked"
+
+This error affects the old browser-based token scripts. This tool uses a different approach (direct API calls with the app's TLS fingerprint) and is not affected by this block.
 
 ## Support
 
