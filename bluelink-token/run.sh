@@ -56,7 +56,7 @@ else:
     print(0)
 " 2>/dev/null || echo "0")
 bashio::log.info "Vehicles configured: ${vehicle_count}"
-bashio::log.info "Web UI available at port 9877"
+bashio::log.info "Web UI available at port 9876"
 
 source /opt/venv/bin/activate
-exec gunicorn --bind 0.0.0.0:9877 --workers 1 --threads 4 --timeout 300 web:app
+exec gunicorn --bind 0.0.0.0:9876 --workers 1 --threads 4 --timeout 300 web:app
