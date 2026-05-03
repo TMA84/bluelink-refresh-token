@@ -1,5 +1,16 @@
 # Changelog
 
+## 6.4.0
+
+### Fix
+- **Sensor-Ablaufdatum driftet nicht mehr** — Der HA-Sensor zeigte täglich ein neues Ablaufdatum (+1 Tag pro Tag). Ursache: Bei jedem Sensor-Refresh wurde das Datum neu berechnet statt das gespeicherte Datum beizubehalten. Jetzt wird das bestehende Ablaufdatum unverändert re-publiziert.
+
+### Dokumentation
+- **Installationsübersicht** — Neue Tabelle "Welche Methode passt zu mir?" in der README
+- **NAS-Anleitungen** — Spezifische Quick-Start-Guides für Synology, QNAP und Unraid
+- **FAQ-Sektion** — Häufige Fragen aus der Community (HACS, kein Add-on Store, "abusing request"-Fehler)
+- **HA-Voraussetzungen** — Klarer Hinweis dass das Add-on HAOS/Supervised erfordert
+
 ## 6.3.3
 
 ### Fix
