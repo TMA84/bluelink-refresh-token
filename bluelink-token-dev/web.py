@@ -1750,14 +1750,6 @@ def _render_kia_uvo_card():
         else:
             status_html = ""
 
-    # Log section
-    log_lines = []
-    for lvl, msg in kia_uvo_logs:
-        cls = {"ok": "ok", "warn": "warn", "err": "err"}.get(lvl, "")
-        escaped = html_lib.escape(msg)
-        log_lines.append(f'<span class="{cls}">{escaped}</span>' if cls else escaped)
-    log_html = "<br>".join(log_lines) if log_lines else "No transfer activity yet."
-
     # Input fields: show configured values or input fields
     if ha_configured:
         fields_html = f"""
@@ -1806,7 +1798,6 @@ def _render_kia_uvo_card():
     {status_html}
     {btn_html}
     <div id="kia-uvo-result" style="margin-top: 12px;"></div>
-    <details style="margin-top:12px;"><summary>Transfer log</summary><div class="log" style="max-height:150px;">{log_html}</div></details>
 </div>
 <script>
 function kiaUvoSendToken() {{
