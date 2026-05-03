@@ -22,6 +22,7 @@ RUN pip3 install --no-cache-dir requests flask gunicorn curl_cffi pycryptodome
 WORKDIR /app
 
 COPY web.py /app/
+COPY ha_kia_uvo.py /app/
 COPY config.yaml /app/
 COPY run.sh /
 COPY run-standalone.sh /

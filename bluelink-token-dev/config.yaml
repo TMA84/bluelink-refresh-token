@@ -22,6 +22,10 @@ options:
   country: "DE"
   evcc_url: ""
   evcc_password: ""
+  ha_url: ""
+  ha_token: ""
+  ha_kia_uvo_transfer: "auto"
+  ha_kia_uvo_pin: ""
   api_token: ""
 schema:
   vehicles:
@@ -31,4 +35,8 @@ schema:
   country: str?
   evcc_url: str?
   evcc_password: password?
+  ha_url: str?
+  ha_token: password?
+  ha_kia_uvo_transfer: list(auto|true|false)?
+  ha_kia_uvo_pin: password?
   api_token: password?

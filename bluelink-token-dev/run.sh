@@ -3,6 +3,10 @@
 EVCC_URL=""
 EVCC_PASSWORD=""
 API_TOKEN=""
+HA_URL=""
+HA_TOKEN=""
+HA_KIA_UVO_TRANSFER=""
+HA_KIA_UVO_PIN=""
 
 if bashio::config.has_value 'country'; then
     export COUNTRY=$(bashio::config 'country')
@@ -16,6 +20,18 @@ fi
 if bashio::config.has_value 'api_token'; then
     API_TOKEN=$(bashio::config 'api_token')
 fi
+if bashio::config.has_value 'ha_url'; then
+    HA_URL=$(bashio::config 'ha_url')
+fi
+if bashio::config.has_value 'ha_token'; then
+    HA_TOKEN=$(bashio::config 'ha_token')
+fi
+if bashio::config.has_value 'ha_kia_uvo_transfer'; then
+    HA_KIA_UVO_TRANSFER=$(bashio::config 'ha_kia_uvo_transfer')
+fi
+if bashio::config.has_value 'ha_kia_uvo_pin'; then
+    HA_KIA_UVO_PIN=$(bashio::config 'ha_kia_uvo_pin')
+fi
 
 # Build vehicles JSON from config
 VEHICLES_JSON=$(bashio::config 'vehicles')
@@ -23,6 +39,10 @@ export VEHICLES_JSON
 export EVCC_URL
 export EVCC_PASSWORD
 export API_TOKEN
+export HA_URL
+export HA_TOKEN
+export HA_KIA_UVO_TRANSFER
+export HA_KIA_UVO_PIN
 
 bashio::log.info "Starting Bluelink Token Generator..."
 vehicle_count=$(echo "$VEHICLES_JSON" | python3 -c "
