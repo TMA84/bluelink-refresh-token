@@ -26,10 +26,11 @@ def _kia_uvo_config() -> dict | None:
 
     Logic:
         1. Read HA_URL, HA_TOKEN, HA_KIA_UVO_TRANSFER
-        2. If HA_URL or HA_TOKEN missing → return None
-        3. If HA_KIA_UVO_TRANSFER == "false" → return None
-        4. If HA_KIA_UVO_TRANSFER == "true" → return config (skip detection)
-        5. Otherwise → auto-detect (call detection endpoint)
+        2. Try SUPERVISOR_TOKEN as fallback (HA addon environment)
+        3. If no URL+token available → return None
+        4. If HA_KIA_UVO_TRANSFER == "false" → return None
+        5. If HA_KIA_UVO_TRANSFER == "true" → return config (skip detection)
+        6. Otherwise → auto-detect
 
     Returns:
         dict with keys ha_url, ha_token, enabled when transfer is enabled.
@@ -38,6 +39,13 @@ def _kia_uvo_config() -> dict | None:
     ha_url = os.environ.get("HA_URL", "").strip()
     ha_token = os.environ.get("HA_TOKEN", "").strip()
     ha_transfer = os.environ.get("HA_KIA_UVO_TRANSFER", "").strip().lower()
+
+    # Fallback: use SUPERVISOR_TOKEN if running as HA addon
+    supervisor_token = os.environ.get("SUPERVISOR_TOKEN", "").strip()
+    if not ha_token and supervisor_token:
+        ha_token = supervisor_token
+    if not ha_url and supervisor_token:
+        ha_url = "http://supervisor/core"
 
     # If HA_URL or HA_TOKEN is missing, skip silently
     if not ha_url or not ha_token:
@@ -59,8 +67,6 @@ def _kia_uvo_config() -> dict | None:
         }
 
     # Auto-detect mode: HA_KIA_UVO_TRANSFER is unset or any other value
-    # Detection will be wired in task 1.2; for now return config dict
-    # to indicate auto-detect should proceed
     return {
         "ha_url": ha_url,
         "ha_token": ha_token,
@@ -88,15 +94,24 @@ def _detect_kia_uvo_entries(ha_url: str, ha_token: str) -> list[dict]:
     headers = {"Authorization": f"Bearer {ha_token}"}
 
     try:
+        print(f"[KIA_UVO] Detecting entries: GET {url}", flush=True)
         resp = req_lib.get(url, headers=headers, timeout=(10, 30), verify=False)
+        print(f"[KIA_UVO] Detection response: HTTP {resp.status_code}", flush=True)
         resp.raise_for_status()
-        return resp.json()
+        entries = resp.json()
+        print(f"[KIA_UVO] Detection result: {len(entries)} entries found", flush=True)
+        return entries
     except req_lib.exceptions.HTTPError as e:
         status = e.response.status_code if e.response is not None else "unknown"
-        print(f"[KIA_UVO] HTTP error detecting kia_uvo entries: {status}", flush=True)
+        body = ""
+        try:
+            body = e.response.text[:200] if e.response is not None else ""
+        except Exception:
+            pass
+        print(f"[KIA_UVO] HTTP error detecting kia_uvo entries: {status} — {body}", flush=True)
         return []
-    except req_lib.exceptions.ConnectionError:
-        print("[KIA_UVO] Connection error detecting kia_uvo entries: HA unreachable", flush=True)
+    except req_lib.exceptions.ConnectionError as e:
+        print(f"[KIA_UVO] Connection error detecting kia_uvo entries: {e}", flush=True)
         return []
     except req_lib.exceptions.Timeout:
         print("[KIA_UVO] Timeout detecting kia_uvo entries: HA did not respond within 10s", flush=True)
