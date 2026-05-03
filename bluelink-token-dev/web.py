@@ -794,17 +794,7 @@ function evccRestart() {{
 }}
 function evccDone(msg) {{
     var resultDiv = document.getElementById('evcc-result');
-    resultDiv.innerHTML = msg + '<div style="margin-top:12px;color:var(--text-secondary);font-size:13px;" id="evcc-countdown">Resetting in 30s...</div><button class="btn btn-secondary" style="margin-top:8px;" onclick="evccReset()">Reset now</button>';
-    var seconds = 30;
-    var timer = setInterval(function() {{
-        seconds--;
-        var el = document.getElementById('evcc-countdown');
-        if (el) el.textContent = 'Resetting in ' + seconds + 's...';
-        if (seconds <= 0) {{ clearInterval(timer); evccReset(); }}
-    }}, 1000);
-}}
-function evccReset() {{
-    fetch(bp('/reset'), {{ method: 'POST' }}).then(function() {{ location.href = bp('/'); }});
+    resultDiv.innerHTML = msg;
 }}
 {"// Auto-connect if evcc is configured\nwindow.addEventListener('load', function() { document.getElementById('evcc-result').innerHTML = '<div class=\"notice notice-info\">Connecting to evcc...</div>'; evccLoadVehicles(); });" if evcc_configured else ""}
 </script>
