@@ -794,7 +794,7 @@ function evccRestart() {{
 }}
 function evccDone(msg) {{
     var resultDiv = document.getElementById('evcc-result');
-    resultDiv.innerHTML = msg;
+    resultDiv.innerHTML = msg + '<div style="margin-top:12px;"><button class="btn btn-secondary" onclick="evccLoadVehicles()">Re-send to evcc</button></div>';
 }}
 {"// Auto-connect if evcc is configured\nwindow.addEventListener('load', function() { document.getElementById('evcc-result').innerHTML = '<div class=\"notice notice-info\">Connecting to evcc...</div>'; evccLoadVehicles(); });" if evcc_configured else ""}
 </script>
