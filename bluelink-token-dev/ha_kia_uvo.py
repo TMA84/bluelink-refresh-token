@@ -24,13 +24,9 @@ def _kia_uvo_config() -> dict | None:
 
     Returns config dict if kia_uvo transfer is enabled, None otherwise.
 
-    Logic:
-        1. Read HA_URL, HA_TOKEN, HA_KIA_UVO_TRANSFER
-        2. Try SUPERVISOR_TOKEN as fallback (HA addon environment)
-        3. If no URL+token available → return None
-        4. If HA_KIA_UVO_TRANSFER == "false" → return None
-        5. If HA_KIA_UVO_TRANSFER == "true" → return config (skip detection)
-        6. Otherwise → auto-detect
+    Priority for HA connection:
+        1. SUPERVISOR_TOKEN (automatic in HA addon) → http://supervisor/core
+        2. HA_URL + HA_TOKEN (manual config)
 
     Returns:
         dict with keys ha_url, ha_token, enabled when transfer is enabled.
@@ -40,15 +36,14 @@ def _kia_uvo_config() -> dict | None:
     ha_token = os.environ.get("HA_TOKEN", "").strip()
     ha_transfer = os.environ.get("HA_KIA_UVO_TRANSFER", "").strip().lower()
 
-    # Fallback: use SUPERVISOR_TOKEN if running as HA addon
+    # Priority 1: SUPERVISOR_TOKEN (always works in HA addon, no config needed)
     supervisor_token = os.environ.get("SUPERVISOR_TOKEN", "").strip()
-    if not ha_token and supervisor_token:
-        ha_token = supervisor_token
-    if not ha_url and supervisor_token:
+    if supervisor_token:
         ha_url = "http://supervisor/core"
-
-    # If HA_URL or HA_TOKEN is missing, skip silently
-    if not ha_url or not ha_token:
+        ha_token = supervisor_token
+        print(f"[KIA_UVO] Using SUPERVISOR_TOKEN with {ha_url}", flush=True)
+    elif not ha_url or not ha_token:
+        # No supervisor token and no manual config
         return None
 
     # Strip trailing slash from HA_URL
@@ -58,15 +53,6 @@ def _kia_uvo_config() -> dict | None:
     if ha_transfer == "false":
         return None
 
-    # Explicit enable — skip detection
-    if ha_transfer == "true":
-        return {
-            "ha_url": ha_url,
-            "ha_token": ha_token,
-            "enabled": True,
-        }
-
-    # Auto-detect mode: HA_KIA_UVO_TRANSFER is unset or any other value
     return {
         "ha_url": ha_url,
         "ha_token": ha_token,
