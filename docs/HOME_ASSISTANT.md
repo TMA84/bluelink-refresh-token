@@ -94,11 +94,21 @@ On each app restart, each vehicle's sensor is checked individually:
 
 ## Automatic Token Renewal
 
-### Via Automation (recommended)
+The add-on has **built-in auto-renewal**: it checks token expiry every 24 hours and automatically renews tokens that are about to expire (<14 days remaining). A persistent notification is created in HA when a token is renewed or if renewal fails.
 
-Create an automation that restarts the app when any token is about to expire. Use the sensor name from the app log.
+**No automation or cron job needed** — just enable "Start on boot" and leave the add-on running.
 
-**Settings → Automations → New Automation → ⋮ → Edit as YAML:**
+### Recommended Setup
+
+1. Enable **Start on boot** in the add-on settings
+2. That's it — the add-on handles everything automatically
+
+### Optional: Custom Automation (legacy)
+
+If you prefer explicit control or want to trigger renewal at a specific time, you can still create an automation. This is **not required** — the add-on already does this internally.
+
+<details>
+<summary>Show legacy automation YAML</summary>
 
 ```yaml
 alias: Bluelink Token Auto-Renew
@@ -123,15 +133,15 @@ mode: single
 
 > **Note:** The addon identifier is `local_bluelink_token`. You can verify this in **Settings → Apps → Bluelink Token Generator** — the slug is shown in the URL.
 
-### Via Start on Boot
-
-Enable **Start on boot** in the app settings. The app checks each vehicle's token expiry on every HA restart and only renews those that need it.
+</details>
 
 ## Expiry Reminder Notification
 
+The add-on creates a persistent notification automatically when a token is renewed or fails. If you additionally want a mobile notification, you can use this automation:
+
 ```yaml
 alias: Bluelink Token Expiry Reminder
-description: Notification when any Bluelink token is about to expire
+description: Mobile notification when any Bluelink token is about to expire
 triggers:
   - trigger: template
     value_template: >-

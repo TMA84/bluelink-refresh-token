@@ -1,5 +1,12 @@
 # Changelog
 
+## 6.5.1
+
+### Verbessert
+- **Dark Mode Toggle** — Manueller Umschalter im Header (Auto/Dark/Light), wird in localStorage gespeichert
+- **HA-Doku vereinfacht** — Auto-Renewal macht die HA-Automation überflüssig, alte Automation als "legacy" markiert
+- **Empfehlung: Start on Boot** — Keine manuelle Automation mehr nötig, Add-on erneuert Tokens selbständig
+
 ## 6.5.0
 
 ### Neu
