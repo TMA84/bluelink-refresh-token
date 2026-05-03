@@ -1725,11 +1725,19 @@ def _render_kia_uvo_card():
     """Render the kia_uvo transfer status card for the Web UI success page."""
     ha_url = os.environ.get("HA_URL", "").strip().rstrip("/")
     ha_token = os.environ.get("HA_TOKEN", "").strip()
-    ha_configured = bool(ha_url and ha_token)
+    supervisor_token = os.environ.get("SUPERVISOR_TOKEN", "").strip()
     ha_transfer_setting = os.environ.get("HA_KIA_UVO_TRANSFER", "").strip().lower()
+
+    # Determine connection mode
+    is_addon = bool(supervisor_token)
+    ha_configured = is_addon or bool(ha_url and ha_token)
+
     # If explicitly disabled, don't show the card
     if ha_transfer_setting == "false":
         return ""
+
+    # If not configured at all (standalone without HA settings), show input fields
+    # If addon or configured, show status only
 
     # Find kia_uvo log entries from the current session
     kia_uvo_logs = [(lvl, msg) for lvl, msg in state.get("log", []) if "kia_uvo:" in msg]
@@ -1744,16 +1752,19 @@ def _render_kia_uvo_card():
         elif last_level == "ok" and "transferred" in last_msg.lower():
             status_html = '<div class="notice notice-success" style="margin-bottom:12px;">✅ Token successfully transferred to kia_uvo integration.</div>'
         elif last_level == "err":
-            status_html = '<div class="notice notice-error" style="margin-bottom:12px;">❌ Transfer failed — check log for details.</div>'
+            status_html = '<div class="notice notice-error" style="margin-bottom:12px;">❌ Transfer failed — check addon log for details.</div>'
         elif last_level == "warn":
             status_html = f'<div class="notice notice-warning" style="margin-bottom:12px;">⚠ {html_lib.escape(last_msg.replace("kia_uvo: ", ""))}</div>'
         else:
             status_html = ""
 
-    # Input fields: show configured values or input fields
-    if ha_configured:
+    # Input fields: only show when running standalone without any HA connection
+    if is_addon:
+        # Addon mode: no fields needed, SUPERVISOR_TOKEN handles everything
+        fields_html = ""
+    elif ha_configured:
+        # Manual config via env vars
         fields_html = f"""
-    <div class="notice notice-info" style="margin-bottom:12px;">HA connection configured via environment/addon settings.</div>
     <div style="margin-bottom: 12px;">
         <div class="section-label">Home Assistant URL</div>
         <div style="font-size: 13px; color: var(--text); padding: 8px 12px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border);">
@@ -1761,6 +1772,7 @@ def _render_kia_uvo_card():
         </div>
     </div>"""
     else:
+        # Standalone mode: show input fields
         fields_html = """
     <div style="margin-bottom: 12px;">
         <div class="section-label">Home Assistant URL</div>
