@@ -89,8 +89,6 @@ def _detect_kia_uvo_entries(ha_url: str, ha_token: str) -> list[dict]:
         print(f"[KIA_UVO] Detecting entries: GET {url}", flush=True)
         resp = req_lib.get(url, headers=headers, timeout=(10, 30), verify=False)
         print(f"[KIA_UVO] Detection response: HTTP {resp.status_code}, body length: {len(resp.text)}", flush=True)
-        if resp.status_code != 200:
-            print(f"[KIA_UVO] Response body: {resp.text[:500]}", flush=True)
         resp.raise_for_status()
         entries = resp.json()
         print(f"[KIA_UVO] Detection result: {len(entries)} entries found", flush=True)
@@ -100,12 +98,7 @@ def _detect_kia_uvo_entries(ha_url: str, ha_token: str) -> list[dict]:
         return entries
     except req_lib.exceptions.HTTPError as e:
         status = e.response.status_code if e.response is not None else "unknown"
-        body = ""
-        try:
-            body = e.response.text[:300] if e.response is not None else ""
-        except Exception:
-            pass
-        print(f"[KIA_UVO] HTTP error detecting kia_uvo entries: {status} — {body}", flush=True)
+        print(f"[KIA_UVO] HTTP error detecting kia_uvo entries: {status}", flush=True)
         return []
     except req_lib.exceptions.ConnectionError as e:
         print(f"[KIA_UVO] Connection error detecting kia_uvo entries: {e}", flush=True)
@@ -263,7 +256,7 @@ def _reconfigure_kia_uvo_entry(
 
     flow_id = step1_data.get("flow_id")
     if not flow_id:
-        print(f"[KIA_UVO] Missing flow_id in step 1 response for entry {entry_id}: {step1_data}", flush=True)
+        print(f"[KIA_UVO] Missing flow_id in step 1 response for entry {entry_id} (type: {step1_data.get('type', 'unknown')})", flush=True)
         return False
 
     # Step 2: Select reauth choice
@@ -298,7 +291,7 @@ def _reconfigure_kia_uvo_entry(
 
     step2_flow_id = step2_data.get("flow_id")
     if not step2_flow_id:
-        print(f"[KIA_UVO] Missing flow_id in step 2 response: {step2_data}", flush=True)
+        print(f"[KIA_UVO] Missing flow_id in step 2 response (type: {step2_data.get('type', 'unknown')})", flush=True)
         return False
 
     # Step 3: Submit region/brand (HA expects string values)
@@ -333,7 +326,7 @@ def _reconfigure_kia_uvo_entry(
 
     step3_flow_id = step3_data.get("flow_id")
     if not step3_flow_id:
-        print(f"[KIA_UVO] Missing flow_id in step 3 response: {step3_data}", flush=True)
+        print(f"[KIA_UVO] Missing flow_id in step 3 response (type: {step3_data.get('type', 'unknown')})", flush=True)
         return False
 
     # Step 4: Submit credentials
@@ -387,7 +380,7 @@ def _reconfigure_kia_uvo_entry(
     # If we got a flow_id back, it might be asking for more steps (unexpected)
     step4_flow_id = step4_data.get("flow_id")
     if not step4_flow_id:
-        print(f"[KIA_UVO] Missing flow_id in step 4 response: {step4_data}", flush=True)
+        print(f"[KIA_UVO] Missing flow_id in step 4 response (type: {step4_data.get('type', 'unknown')})", flush=True)
         return False
 
     print(f"[KIA_UVO] Reconfigure flow completed for entry {entry_id} (response: {step4_type})", flush=True)
@@ -446,7 +439,7 @@ def _setup_kia_uvo_entry(
 
     flow_id = step1_data.get("flow_id")
     if not flow_id:
-        print(f"[KIA_UVO] Missing flow_id in setup step 1: {step1_data}", flush=True)
+        print(f"[KIA_UVO] Missing flow_id in setup step 1 (type: {step1_data.get('type', 'unknown')})", flush=True)
         return False
 
     # Step 2: Submit region/brand
@@ -470,7 +463,7 @@ def _setup_kia_uvo_entry(
         return False
 
     if not step2_data.get("flow_id"):
-        print(f"[KIA_UVO] Missing flow_id in setup step 2: {step2_data}", flush=True)
+        print(f"[KIA_UVO] Missing flow_id in setup step 2 (type: {step2_data.get('type', 'unknown')})", flush=True)
         return False
 
     # Step 3: Submit credentials

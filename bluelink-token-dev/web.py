@@ -874,7 +874,8 @@ def test_token():
         else:
             state["test_result"] = f"Token refresh failed ({response.status_code}): {response.text[:150]}"
     except Exception as e:
-        state["test_result"] = str(e)
+        print(f"[ERROR] {e}", flush=True)
+        state["test_result"] = "An internal error occurred."
     return flask_redirect("/")
 
 @app.route("/api/quicklogin", methods=["POST"])
@@ -927,10 +928,11 @@ def api_quicklogin():
             log(err, "err")
             return jsonify({"ok": False, "error": err})
     except Exception as e:
+        print(f"[ERROR] {e}", flush=True)
         state["status"] = "idle"
-        state["error"] = str(e)
-        log(str(e), "err")
-        return jsonify({"ok": False, "error": str(e)})
+        state["error"] = "An internal error occurred."
+        log("An internal error occurred.", "err")
+        return jsonify({"ok": False, "error": "An internal error occurred."})
 
 def _headless_login_eu_with_retry(username, password, config, max_retries=2):
     """Wrapper around _headless_login_eu with retry logic for transient failures."""
@@ -1275,10 +1277,11 @@ def api_tokens_generate():
                     "message": result.get("error", "Login failed"),
                 }]})
         except Exception as e:
+            print(f"[ERROR] {e}", flush=True)
             return jsonify({"ok": False, "vehicles": [{
                 "brand": brand, "brand_name": config["brand_name"],
                 "username": username, "status": "error",
-                "message": str(e),
+                "message": "An internal error occurred.",
             }]})
 
     # Otherwise, generate for all configured vehicles
@@ -1351,10 +1354,11 @@ def api_tokens_generate():
                     "message": result.get("error", "Login failed"),
                 })
         except Exception as e:
+            print(f"[ERROR] {e}", flush=True)
             results.append({
                 "brand": brand, "brand_name": config["brand_name"],
                 "username": username, "status": "error",
-                "message": str(e),
+                "message": "An internal error occurred.",
             })
 
     has_error = any(r["status"] == "error" for r in results)
