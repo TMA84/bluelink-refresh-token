@@ -699,6 +699,7 @@ addVehicle(); // Start with one vehicle form
     <input type="hidden" id="evcc-password" value="{html_lib.escape(os.environ.get('EVCC_PASSWORD', ''))}">
     {evcc_fields_html}
     {"" if evcc_configured else '<button class="btn btn-secondary" onclick="evccLoadVehicles()" id="evcc-connect-btn">Connect</button>'}
+    {"<button class=\"btn btn-secondary\" onclick=\"evccLoadVehicles()\" id=\"evcc-resend-btn\" style=\"display:none;\">Re-send to evcc</button>" if evcc_configured else ""}
     <div id="evcc-vehicles" style="display:none; margin-top: 16px;">
         <div class="section-label">Vehicles</div>
         <div id="evcc-vehicle-list" style="margin-bottom: 12px;"></div>
@@ -742,7 +743,7 @@ function evccLoadVehicles() {{
             document.getElementById('evcc-vehicles').style.display = 'block';
             resultDiv.innerHTML = '<div class="notice notice-success">Connected — ' + d.vehicles.length + ' vehicles found. All selected by default.</div>';
         }}
-    }}).catch(function(e) {{ if (btn) {{ btn.textContent = 'Connect'; btn.disabled = false; }} resultDiv.innerHTML = '<div class="notice notice-error">Connection failed: ' + e + '</div>'; }});
+    }}).catch(function(e) {{ if (btn) {{ btn.textContent = 'Connect'; btn.disabled = false; }} var resendBtn = document.getElementById('evcc-resend-btn'); if (resendBtn) resendBtn.style.display = ''; resultDiv.innerHTML = '<div class="notice notice-error">Connection failed: ' + e + '</div>'; }});
 }}
 function evccSendToken() {{
     var checkboxes = document.querySelectorAll('#evcc-vehicle-list input[type=checkbox]:checked');
@@ -770,14 +771,17 @@ function evccSendToVehicles(ids) {{
 function evccTransferDone(total, errors) {{
     var resultDiv = document.getElementById('evcc-result');
     var ok = total - errors.length;
+    var resendBtn = document.getElementById('evcc-resend-btn');
     if (errors.length === 0) {{
         resultDiv.innerHTML = '<div class="notice notice-success">Token sent to ' + ok + ' vehicle(s) — restarting evcc...</div>';
         evccRestart();
     }} else if (ok > 0) {{
         resultDiv.innerHTML = '<div class="notice notice-warning">Token sent to ' + ok + '/' + total + ' vehicle(s). Errors: ' + errors.join(', ') + '</div><div class="notice notice-info" style="margin-top:8px;">Restarting evcc...</div>';
+        if (resendBtn) resendBtn.style.display = '';
         evccRestart();
     }} else {{
         resultDiv.innerHTML = '<div class="notice notice-error">Transfer failed: ' + errors.join(', ') + '</div>';
+        if (resendBtn) resendBtn.style.display = '';
     }}
 }}
 function evccRestart() {{
@@ -794,7 +798,9 @@ function evccRestart() {{
 }}
 function evccDone(msg) {{
     var resultDiv = document.getElementById('evcc-result');
-    resultDiv.innerHTML = msg + '<div style="margin-top:12px;"><button class="btn btn-secondary" onclick="evccLoadVehicles()">Re-send to evcc</button></div>';
+    resultDiv.innerHTML = msg;
+    var resendBtn = document.getElementById('evcc-resend-btn');
+    if (resendBtn) resendBtn.style.display = '';
 }}
 {"// Auto-connect if evcc is configured\nwindow.addEventListener('load', function() { document.getElementById('evcc-result').innerHTML = '<div class=\"notice notice-info\">Connecting to evcc...</div>'; evccLoadVehicles(); });" if evcc_configured else ""}
 </script>
