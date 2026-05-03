@@ -395,6 +395,126 @@ def _reconfigure_kia_uvo_entry(
     return True
 
 
+def _setup_kia_uvo_entry(
+    ha_url: str,
+    ha_token: str,
+    username: str,
+    password: str,
+    pin: str,
+    region: str = "1",
+    brand: str = "1",
+) -> bool:
+    """Run the initial kia_uvo setup flow (when no config entry exists yet).
+
+    This is a 2-step flow:
+        Step 1: POST /api/config/config_entries/flow (without entry_id) → region/brand
+        Step 2: POST /api/config/config_entries/flow/{flow_id} → credentials
+
+    Args:
+        ha_url: Home Assistant base URL (no trailing slash).
+        ha_token: Long-Lived Access Token or SUPERVISOR_TOKEN.
+        username: Account username/email for kia_uvo.
+        password: Refresh token (used as password for kia_uvo).
+        pin: Vehicle PIN.
+        region: Region code as string (default "1" = Europe).
+        brand: Brand code as string (default "1" = Kia).
+
+    Returns:
+        True on successful setup, False on any failure.
+    """
+    headers = {"Authorization": f"Bearer {ha_token}"}
+    timeout = 30
+
+    # Step 1: Initiate setup flow (no entry_id = new setup)
+    try:
+        resp = req_lib.post(
+            f"{ha_url}/api/config/config_entries/flow",
+            headers=headers,
+            json={"handler": "kia_uvo"},
+            timeout=timeout,
+            verify=False,
+        )
+        resp.raise_for_status()
+    except Exception as e:
+        print(f"[KIA_UVO] Error initiating setup flow: {e}", flush=True)
+        return False
+
+    try:
+        step1_data = resp.json()
+    except Exception:
+        print(f"[KIA_UVO] Malformed JSON in setup step 1 response", flush=True)
+        return False
+
+    flow_id = step1_data.get("flow_id")
+    if not flow_id:
+        print(f"[KIA_UVO] Missing flow_id in setup step 1: {step1_data}", flush=True)
+        return False
+
+    # Step 2: Submit region/brand
+    try:
+        resp = req_lib.post(
+            f"{ha_url}/api/config/config_entries/flow/{flow_id}",
+            headers=headers,
+            json={"region": str(region), "brand": str(brand)},
+            timeout=timeout,
+            verify=False,
+        )
+        resp.raise_for_status()
+    except Exception as e:
+        print(f"[KIA_UVO] Error at setup step 2 (region/brand): {e}", flush=True)
+        return False
+
+    try:
+        step2_data = resp.json()
+    except Exception:
+        print(f"[KIA_UVO] Malformed JSON in setup step 2 response", flush=True)
+        return False
+
+    if not step2_data.get("flow_id"):
+        print(f"[KIA_UVO] Missing flow_id in setup step 2: {step2_data}", flush=True)
+        return False
+
+    # Step 3: Submit credentials
+    try:
+        resp = req_lib.post(
+            f"{ha_url}/api/config/config_entries/flow/{flow_id}",
+            headers=headers,
+            json={"username": username, "password": password, "pin": pin},
+            timeout=timeout,
+            verify=False,
+        )
+        resp.raise_for_status()
+    except Exception as e:
+        print(f"[KIA_UVO] Error at setup step 3 (credentials): {e}", flush=True)
+        return False
+
+    try:
+        step3_data = resp.json()
+    except Exception:
+        print(f"[KIA_UVO] Malformed JSON in setup step 3 response", flush=True)
+        return False
+
+    # Success detection
+    step3_type = step3_data.get("type", "")
+    step3_reason = step3_data.get("reason", "")
+
+    if step3_type == "create_entry":
+        print(f"[KIA_UVO] Initial setup completed successfully!", flush=True)
+        return True
+    elif step3_type == "abort" and "success" in step3_reason:
+        print(f"[KIA_UVO] Initial setup completed successfully!", flush=True)
+        return True
+    elif step3_type == "abort":
+        print(f"[KIA_UVO] Setup aborted: {step3_reason}", flush=True)
+        return False
+    elif step3_data.get("errors"):
+        print(f"[KIA_UVO] Setup errors: {step3_data['errors']}", flush=True)
+        return False
+
+    print(f"[KIA_UVO] Setup completed (response type: {step3_type})", flush=True)
+    return True
+
+
 def _auto_kia_uvo_transfer(vehicles: list[dict], log_fn=None):
     """Main entry point for kia_uvo token transfer.
 
@@ -429,12 +549,50 @@ def _auto_kia_uvo_transfer(vehicles: list[dict], log_fn=None):
         _log(f"Starting token transfer to {ha_url}...")
 
         # Step 2: Detect kia_uvo config entries
-        _log(f"Detecting kia_uvo entries at {ha_url}...")
         entries = _detect_kia_uvo_entries(ha_url, ha_token)
+
+        # Map vehicle brands to kia_uvo region/brand codes
+        BRAND_TO_REGION = {
+            "eu_kia": ("1", "1"),       # Europe, Kia
+            "eu_hyundai": ("1", "2"),   # Europe, Hyundai
+        }
+
         if not entries:
-            _log("Transfer skipped: kia_uvo not installed or no entries found", "warn")
-            # Try to give more info about what happened
-            _log(f"Debug: GET {ha_url}/api/config/config_entries/entry?domain=kia_uvo returned empty or error", "warn")
+            # No entries found — try initial setup for each vehicle
+            _log("No existing kia_uvo entries found — running initial setup...")
+            success_count = 0
+            fail_count = 0
+
+            for vehicle in vehicles:
+                username = vehicle.get("username", "")
+                password = vehicle.get("password", "")
+                pin = vehicle.get("pin") or os.environ.get("HA_KIA_UVO_PIN", "")
+                vehicle_brand = vehicle.get("brand", "eu_kia")
+                region, brand = BRAND_TO_REGION.get(vehicle_brand, ("1", "1"))
+
+                result = _setup_kia_uvo_entry(
+                    ha_url=ha_url,
+                    ha_token=ha_token,
+                    username=username,
+                    password=password,
+                    pin=pin,
+                    region=region,
+                    brand=brand,
+                )
+
+                if result:
+                    success_count += 1
+                    _log(f"Initial setup completed for {username}", "ok")
+                else:
+                    fail_count += 1
+                    _log(f"Initial setup failed for {username}", "err")
+
+            if fail_count == 0 and success_count > 0:
+                _log(f"Setup complete: {success_count} succeeded", "ok")
+            elif success_count > 0:
+                _log(f"Setup complete: {success_count} succeeded, {fail_count} failed", "warn")
+            else:
+                _log("Setup failed for all vehicles", "err")
             return
 
         # Step 3: Match entries to vehicles
@@ -448,12 +606,6 @@ def _auto_kia_uvo_transfer(vehicles: list[dict], log_fn=None):
         # Step 4: Reconfigure each matched entry
         success_count = 0
         fail_count = 0
-
-        # Map vehicle brands to kia_uvo region/brand codes
-        BRAND_TO_REGION = {
-            "eu_kia": ("1", "1"),       # Europe, Kia
-            "eu_hyundai": ("1", "2"),   # Europe, Hyundai
-        }
 
         for entry, vehicle in matches:
             entry_id = entry.get("entry_id", "unknown")
