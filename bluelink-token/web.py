@@ -151,7 +151,7 @@ body { font-family: 'Montserrat', system-ui, -apple-system, 'Segoe UI', sans-ser
 .header h1 { font-size: 18px; font-weight: bold; color: white; text-transform: uppercase; }
 .header .brand { font-size: 11px; font-weight: bold; color: var(--evcc-green);
                  background: rgba(15,222,65,0.15); padding: 3px 12px; border-radius: 20px;
-                 text-transform: uppercase; letter-spacing: 0.8px; }
+                 text-transform: uppercase; letter-spacing: 0.8px; margin-right: auto; }
 .container { max-width: 800px; margin: 0 auto; padding: 0 16px 40px; }
 .card { background: var(--surface); border-radius: 1rem; padding: 1.25rem;
         margin-bottom: 16px; }
@@ -206,7 +206,7 @@ select, input[type="text"], input[type="password"] {
 select:focus, input[type="text"]:focus, input[type="password"]:focus {
   outline: none; border-color: var(--primary); }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #1a1a2e; --surface: #16213e; --surface-border: #1a1a2e;
     --text: #e8e8e8; --text-secondary: #a0a0b0;
     --border: #2a2a4a;
@@ -216,10 +216,26 @@ select:focus, input[type="text"]:focus, input[type="password"]:focus {
     --warning: #ff9000; --warning-bg: #2e1e08;
     --info: #0fde41; --info-bg: #0a2e14;
   }
-  .header { background: #0f0f1a; }
-  .log { background: #0f0f1a; }
-  .token-box { background: #0f0f1a; border-color: #2a2a4a; }
+  :root:not([data-theme="light"]) .header { background: #0f0f1a; }
+  :root:not([data-theme="light"]) .log { background: #0f0f1a; }
+  :root:not([data-theme="light"]) .token-box { background: #0f0f1a; border-color: #2a2a4a; }
 }
+:root[data-theme="dark"] {
+  --bg: #1a1a2e; --surface: #16213e; --surface-border: #1a1a2e;
+  --text: #e8e8e8; --text-secondary: #a0a0b0;
+  --border: #2a2a4a;
+  --primary: #0fde41; --primary-hover: #0ba631; --primary-light: #0a2e14;
+  --success: #0fde41; --success-bg: #0a2e14;
+  --error: #fc440f; --error-bg: #2e1008;
+  --warning: #ff9000; --warning-bg: #2e1e08;
+  --info: #0fde41; --info-bg: #0a2e14;
+}
+:root[data-theme="dark"] .header { background: #0f0f1a; }
+:root[data-theme="dark"] .log { background: #0f0f1a; }
+:root[data-theme="dark"] .token-box { background: #0f0f1a; border-color: #2a2a4a; }
+.theme-toggle { background: none; border: none; cursor: pointer; font-size: 18px;
+  padding: 4px 8px; border-radius: 6px; color: white; opacity: 0.7; transition: opacity 0.2s; }
+.theme-toggle:hover { opacity: 1; }
 """
 
 SCRIPT = """
@@ -233,6 +249,34 @@ function copyToken(id) {
         setTimeout(function() { btn.textContent = orig; }, 2000);
     });
 }
+function getTheme() {
+    return localStorage.getItem('theme') || 'auto';
+}
+function applyTheme(theme) {
+    var root = document.documentElement;
+    if (theme === 'auto') {
+        root.removeAttribute('data-theme');
+    } else {
+        root.setAttribute('data-theme', theme);
+    }
+    updateToggleIcon();
+}
+function toggleTheme() {
+    var current = getTheme();
+    var next = current === 'auto' ? 'dark' : current === 'dark' ? 'light' : 'auto';
+    localStorage.setItem('theme', next);
+    applyTheme(next);
+}
+function updateToggleIcon() {
+    var btn = document.getElementById('theme-toggle');
+    if (!btn) return;
+    var theme = getTheme();
+    if (theme === 'dark') btn.textContent = '\\u263D';
+    else if (theme === 'light') btn.textContent = '\\u2600';
+    else btn.textContent = '\\u25D0';
+    btn.title = 'Theme: ' + theme + ' (click to toggle)';
+}
+applyTheme(getTheme());
 """
 
 def render(content):
@@ -251,6 +295,7 @@ def render(content):
 <div class="header"><div class="header-inner">
 <h1>Bluelink Token Generator</h1>
 <span class="brand">{brand_label}</span>
+<button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">&#x25D0;</button>
 </div></div>
 <div class="container">{content}</div>
 <div style="text-align:center;padding:16px;color:var(--text-secondary);font-size:12px;">
