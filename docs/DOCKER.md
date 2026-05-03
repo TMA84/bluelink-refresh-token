@@ -88,6 +88,9 @@ Replace `docker` with `podman` if using Podman.
 | `EVCC_URL` | evcc URL for automatic token transfer | |
 | `EVCC_PASSWORD` | evcc admin password | |
 | `COUNTRY` | Country code for EU Hyundai | `DE` |
+| `WEBHOOK_URL` | URL to receive POST notifications on token events | |
+| `RENEWAL_INTERVAL` | Auto-renewal check interval in seconds | `86400` (24h) |
+| `API_TOKEN` | Bearer token to secure API endpoints | |
 
 ### Multi-Vehicle via VEHICLES_JSON
 
@@ -151,33 +154,82 @@ services:
 
 ## Automatic Token Renewal
 
-The container checks token expiry on every start. If a token has less than 14 days remaining, it is automatically renewed. To automate this:
+The container has **built-in auto-renewal**: it checks token expiry every 24 hours and automatically renews tokens that are about to expire (<14 days remaining). No cron jobs or external automation needed — just keep the container running.
 
-### Option 1: Cron-based API call (recommended)
+You can customize the check interval via the `RENEWAL_INTERVAL` environment variable (in seconds, default: 86400 = 24h).
 
-Keep the container running and use a cron job to periodically trigger token renewal:
+### Alternative: External triggers
+
+If you prefer explicit control, you can also trigger renewal externally:
+
+#### Cron-based API call
 
 ```bash
 # Crontab: check and renew tokens once per week
 0 3 * * 1 curl -s -X POST http://localhost:9876/api/tokens > /dev/null
 ```
 
-This only generates a new token if the existing one is about to expire (<14 days). No unnecessary logins.
-
-### Option 2: Container restart via cron
+#### Container restart
 
 ```bash
 # Crontab: restart container once per week (triggers expiry check on start)
 0 3 * * 1 docker restart bluelink-token
 ```
 
-### Option 3: With API_TOKEN (secured)
+#### With API_TOKEN (secured)
 
 ```bash
 0 3 * * 1 curl -s -X POST http://localhost:9876/api/tokens -H "Authorization: Bearer my-secret-token" > /dev/null
 ```
 
-> **Note:** Monthly or more frequent renewal is not recommended. Each token generation is a full login at Kia/Hyundai — too many logins could trigger rate limiting. The 14-day threshold provides enough buffer for retries if a login fails.
+> **Note:** Each token generation is a full login at Kia/Hyundai — too many logins could trigger rate limiting. The 14-day threshold provides enough buffer for retries if a login fails.
+
+## Webhooks
+
+Set `WEBHOOK_URL` to receive HTTP POST notifications when tokens are generated or fail:
+
+```bash
+docker run -d --name bluelink-token -p 9876:9876 \
+  -e BRAND=eu_kia \
+  -e BLUELINK_USERNAME=your@email.com \
+  -e BLUELINK_PASSWORD=yourpassword \
+  -e WEBHOOK_URL=http://your-server/webhook \
+  ghcr.io/tma84/bluelink-token:latest /run-standalone.sh
+```
+
+Webhook payload:
+```json
+{
+  "event": "token_generated",
+  "timestamp": "2026-05-03T12:00:00+00:00",
+  "data": {
+    "vehicles": [{"brand": "eu_kia", "username": "user@example.com"}]
+  }
+}
+```
+
+Events: `token_generated`, `token_failed`
+
+## Healthcheck
+
+The container exposes a healthcheck endpoint:
+
+```bash
+curl http://localhost:9876/health
+```
+
+```json
+{"status": "ok", "version": "6.5.0", "vehicles_configured": 1}
+```
+
+Use this in Docker Compose:
+```yaml
+healthcheck:
+  test: ["CMD", "curl", "-f", "http://localhost:9876/health"]
+  interval: 60s
+  timeout: 5s
+  retries: 3
+```
 
 ## Supported Architectures
 

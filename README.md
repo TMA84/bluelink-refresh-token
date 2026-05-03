@@ -34,12 +34,16 @@ Developed by reverse engineering the official Kia Connect App. Uses `curl_cffi` 
 
 - **Fully headless** — no browser, no Chromium, lightweight container
 - **Multi-vehicle** — configure multiple Kia + Hyundai vehicles at once
-- **Auto-start** — tokens generated on container start when credentials are configured
+- **Auto-renewal** — checks token expiry daily and renews automatically when needed
+- **Retry logic** — transient login failures are retried automatically
 - **Token expiry check** — only renews when tokens are about to expire (<14 days)
 - **evcc integration** — transfers tokens to evcc and restarts automatically
 - **HA Ingress** — Web UI accessible directly from the Home Assistant sidebar
 - **Simple Web UI** — add vehicles dynamically, click "Generate All Tokens"
-- Home Assistant token expiry sensor
+- **Dark mode** — automatic dark/light theme based on system preference
+- **Webhooks** — receive HTTP notifications on token events
+- **Healthcheck endpoint** — `/health` for Docker orchestrators
+- Home Assistant token expiry sensor + persistent notifications
 - **Standalone apps** — native downloads for Windows (.exe), macOS (.dmg) and Linux (.AppImage)
 - Supports `amd64` and `aarch64` (Raspberry Pi, Apple Silicon)
 

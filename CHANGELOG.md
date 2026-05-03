@@ -1,5 +1,16 @@
 # Changelog
 
+## 6.5.0
+
+### Neu
+- **Auto-Renewal** — Container prüft Token-Ablauf alle 24h und erneuert automatisch wenn nötig (<14 Tage). Kein externer Cron-Job mehr nötig.
+- **Retry-Logik** — Fehlgeschlagene Logins werden bis zu 2x automatisch wiederholt (mit Backoff). Credential-Fehler werden nicht wiederholt.
+- **Dark Mode** — Web-UI passt sich automatisch an das System-Theme an (prefers-color-scheme).
+- **Webhook-Notifications** — `WEBHOOK_URL` Environment-Variable für HTTP POST Benachrichtigungen bei Token-Events (generated/failed).
+- **HA Persistent Notifications** — Bei erfolgreicher/fehlgeschlagener Token-Generierung wird eine HA-Notification erstellt.
+- **Healthcheck-Endpoint** — `GET /health` für Docker-Orchestratoren und Monitoring.
+- **`RENEWAL_INTERVAL`** — Konfigurierbares Prüfintervall für Auto-Renewal (Standard: 24h).
+
 ## 6.4.0
 
 ### Fix

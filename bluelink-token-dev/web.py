@@ -205,6 +205,21 @@ select, input[type="text"], input[type="password"] {
   transition: border-color 0.25s; }
 select:focus, input[type="text"]:focus, input[type="password"]:focus {
   outline: none; border-color: var(--primary); }
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1a1a2e; --surface: #16213e; --surface-border: #1a1a2e;
+    --text: #e8e8e8; --text-secondary: #a0a0b0;
+    --border: #2a2a4a;
+    --primary: #0fde41; --primary-hover: #0ba631; --primary-light: #0a2e14;
+    --success: #0fde41; --success-bg: #0a2e14;
+    --error: #fc440f; --error-bg: #2e1008;
+    --warning: #ff9000; --warning-bg: #2e1e08;
+    --info: #0fde41; --info-bg: #0a2e14;
+  }
+  .header { background: #0f0f1a; }
+  .log { background: #0f0f1a; }
+  .token-box { background: #0f0f1a; border-color: #2a2a4a; }
+}
 """
 
 SCRIPT = """
@@ -857,7 +872,7 @@ def api_quicklogin():
     log(f"Quick login: starting for {config['region_name']} {config['brand_name']}...")
 
     try:
-        result = _headless_login_eu(username, password, config)
+        result = _headless_login_eu_with_retry(username, password, config)
         if result.get("ok"):
             return jsonify({"ok": True})
         else:
@@ -871,6 +886,63 @@ def api_quicklogin():
         state["error"] = str(e)
         log(str(e), "err")
         return jsonify({"ok": False, "error": str(e)})
+
+def _headless_login_eu_with_retry(username, password, config, max_retries=2):
+    """Wrapper around _headless_login_eu with retry logic for transient failures."""
+    last_result = None
+    for attempt in range(1, max_retries + 2):  # 1 initial + max_retries
+        result = _headless_login_eu(username, password, config)
+        if result.get("ok"):
+            return result
+        last_result = result
+        error = result.get("error", "")
+        # Don't retry on credential errors or password issues
+        if any(x in error.lower() for x in ("password", "username", "credentials", "rejected", "login page")):
+            return result
+        if attempt <= max_retries:
+            wait = attempt * 5  # 5s, 10s
+            log(f"Headless: attempt {attempt} failed ({error}), retrying in {wait}s...", "warn")
+            time.sleep(wait)
+    return last_result
+
+
+def _send_webhook(event, data=None):
+    """Send a webhook notification if WEBHOOK_URL is configured.
+    
+    Events: token_generated, token_failed, token_renewed
+    """
+    webhook_url = os.environ.get("WEBHOOK_URL", "").strip()
+    if not webhook_url:
+        return
+    payload = {
+        "event": event,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "data": data or {},
+    }
+    try:
+        resp = req_lib.post(webhook_url, json=payload, timeout=10)
+        if resp.status_code < 300:
+            log(f"Webhook sent ({event}).", "ok")
+        else:
+            log(f"Webhook failed ({resp.status_code}).", "warn")
+    except Exception as e:
+        log(f"Webhook error: {e}", "warn")
+
+
+def _send_ha_notification(title, message):
+    """Send a persistent notification via HA if running as addon."""
+    supervisor_token = os.environ.get("SUPERVISOR_TOKEN")
+    if not supervisor_token:
+        return
+    try:
+        req_lib.post(
+            "http://supervisor/core/api/services/persistent_notification/create",
+            headers={"Authorization": f"Bearer {supervisor_token}", "Content-Type": "application/json"},
+            json={"title": title, "message": message, "notification_id": "bluelink_token"},
+            timeout=5)
+    except Exception:
+        pass
+
 
 def _headless_login_eu(username, password, config):
     """
@@ -1003,6 +1075,17 @@ def api_status():
     return jsonify({"status": state["status"], "log": format_log()})
 
 
+@app.route("/health")
+def health():
+    """Healthcheck endpoint for Docker/orchestrators."""
+    vehicles = _get_vehicles_config()
+    return jsonify({
+        "status": "ok",
+        "version": VERSION,
+        "vehicles_configured": len(vehicles),
+    })
+
+
 # ── Token API ───────────────────────────────────────────────
 
 def _check_api_auth():
@@ -1131,7 +1214,7 @@ def api_tokens_generate():
             return jsonify({"ok": False, "error": f"Unknown brand: {brand}. Use 'eu_kia' or 'eu_hyundai'."}), 400
         config = BRAND_CONFIG[brand]
         try:
-            result = _headless_login_eu(username, password, config)
+            result = _headless_login_eu_with_retry(username, password, config)
             if result.get("ok"):
                 token = state.get("refresh_token")
                 return jsonify({"ok": True, "vehicles": [{
@@ -1193,7 +1276,7 @@ def api_tokens_generate():
 
         # Generate new token
         try:
-            result = _headless_login_eu(username, password, config)
+            result = _headless_login_eu_with_retry(username, password, config)
             if result.get("ok"):
                 token = state.get("refresh_token")
                 # Store in vehicles state
@@ -1428,7 +1511,7 @@ def _auto_start_login(force=False):
         log(f"Vehicle {i+1}: {config['brand_name']} — logging in...")
 
         try:
-            result = _headless_login_eu(username, password, config)
+            result = _headless_login_eu_with_retry(username, password, config)
             if result.get("ok"):
                 log(f"Vehicle {i+1}: token generated!", "ok")
                 state["vehicles"].append({
@@ -1454,6 +1537,13 @@ def _auto_start_login(force=False):
     if all_ok and state["vehicles"]:
         state["status"] = "success"
         log("Auto-start: all vehicles processed!", "ok")
+        # Notify
+        generated = [v for v in state["vehicles"] if v.get("status") == "ok"]
+        if generated:
+            _send_webhook("token_generated", {"vehicles": [{"brand": v["brand"], "username": v["username"]} for v in generated]})
+            _send_ha_notification(
+                "Bluelink Token Generated",
+                f"Token(s) generated for {len(generated)} vehicle(s).")
         # Auto-transfer to evcc
         evcc_url = os.environ.get("EVCC_URL", "").rstrip("/")
         evcc_password = os.environ.get("EVCC_PASSWORD", "")
@@ -1464,6 +1554,12 @@ def _auto_start_login(force=False):
     elif state["vehicles"]:
         state["status"] = "success"  # partial success
         log("Auto-start: some vehicles failed, check log.", "warn")
+        failed = [v for v in state["vehicles"] if v.get("status") == "error"]
+        if failed:
+            _send_webhook("token_failed", {"vehicles": [{"brand": v["brand"], "username": v["username"], "error": v.get("error", "")} for v in failed]})
+            _send_ha_notification(
+                "Bluelink Token Error",
+                f"Token generation failed for {len(failed)} vehicle(s). Check the add-on log.")
         _schedule_auto_reset()
     else:
         state["status"] = "idle"
@@ -1604,6 +1700,41 @@ def _sensor_refresh_loop():
         time.sleep(INTERVAL)
 
 threading.Thread(target=_sensor_refresh_loop, daemon=True).start()
+
+
+# Periodic auto-renewal check (every 24 hours)
+def _auto_renewal_loop():
+    """Check token expiry daily and renew if needed (<14 days remaining)."""
+    import sys
+    INTERVAL = int(os.environ.get("RENEWAL_INTERVAL", 24 * 60 * 60))  # default: 24h
+    # Wait before first check (auto-start already runs on boot)
+    time.sleep(INTERVAL)
+    while True:
+        try:
+            vehicles = _get_vehicles_config()
+            if not vehicles:
+                time.sleep(INTERVAL)
+                continue
+            needs_renewal = False
+            for v in vehicles:
+                if not isinstance(v, dict):
+                    continue
+                brand = BRAND_ALIASES.get(v.get("brand", ""), v.get("brand", ""))
+                username = v.get("username", "")
+                if brand not in BRAND_CONFIG or not username:
+                    continue
+                days_left = _check_token_expiry(brand, username)
+                if days_left is not None and days_left <= 14:
+                    needs_renewal = True
+                    break
+            if needs_renewal:
+                print("[RENEWAL] Token expiring soon, triggering auto-renewal...", file=sys.stderr, flush=True)
+                _auto_start_login(force=False)
+        except Exception as e:
+            print(f"[RENEWAL] Error: {e}", file=sys.stderr, flush=True)
+        time.sleep(INTERVAL)
+
+threading.Thread(target=_auto_renewal_loop, daemon=True).start()
 
 
 if __name__ == "__main__":
