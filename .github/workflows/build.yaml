@@ -250,21 +250,21 @@ jobs:
 
       - name: Upload artifact (Windows)
         if: matrix.os_name == 'Windows'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: BluelinkTokenGenerator.exe
           path: standalone/dist/BluelinkTokenGenerator.exe
 
       - name: Upload artifact (Linux)
         if: matrix.os_name == 'Linux'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: BluelinkTokenGenerator-Linux.AppImage
           path: standalone/dist/BluelinkTokenGenerator-Linux.AppImage
 
       - name: Upload artifact (macOS)
         if: matrix.os_name == 'macOS'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: BluelinkTokenGenerator-macOS.dmg
           path: standalone/dist/BluelinkTokenGenerator-macOS.dmg
