@@ -1,5 +1,21 @@
 # Changelog
 
+## 6.6.0
+
+### Neu
+- **Automatischer kia_uvo Token-Transfer** — Refresh Token wird nach Generierung automatisch an die kia_uvo Home Assistant Integration übertragen
+  - Nutzt den HA Config Flow (Reconfigure oder Initial Setup) via REST API
+  - Funktioniert vollautomatisch im Addon (SUPERVISOR_TOKEN)
+  - Erstmalige Konfiguration der Integration möglich (wenn noch kein Config Entry existiert)
+  - Web-UI Card zeigt Transfer-Status und ermöglicht manuelles Re-Send
+- **Modulare Architektur** — evcc-Logik in eigenes `evcc.py` Modul extrahiert
+- **Neue Addon-Config-Optionen** — `ha_url`, `ha_token`, `ha_kia_uvo_transfer`, `ha_kia_uvo_pin` (nur für Standalone/Docker relevant, im Addon nicht nötig)
+
+### Verbessert
+- **evcc Card** — Reset-Button und Countdown entfernt (unnötig)
+- **kia_uvo Card** — Zeigt Status direkt nach Transfer an (kein Reload nötig)
+- **Code-Struktur** — `kia_uvo.py` und `evcc.py` als separate Module, `web.py` deutlich schlanker
+
 ## 6.5.1
 
 ### Verbessert

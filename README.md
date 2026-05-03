@@ -38,6 +38,7 @@ Developed by reverse engineering the official Kia Connect App. Uses `curl_cffi` 
 - **Retry logic** — transient login failures are retried automatically
 - **Token expiry check** — only renews when tokens are about to expire (<14 days)
 - **evcc integration** — transfers tokens to evcc and restarts automatically
+- **kia_uvo integration** — transfers tokens to the kia_uvo HA integration automatically (initial setup + reconfigure)
 - **HA Ingress** — Web UI accessible directly from the Home Assistant sidebar
 - **Simple Web UI** — add vehicles dynamically, click "Generate All Tokens"
 - **Dark mode** — automatic dark/light theme based on system preference
