@@ -90,22 +90,34 @@ def _detect_kia_uvo_entries(ha_url: str, ha_token: str) -> list[dict]:
     Returns:
         List of config entry dicts on success, empty list on any error.
     """
-    url = f"{ha_url}/api/config/config_entries/entry?domain=kia_uvo"
+    # Determine the correct URL based on whether we're using supervisor proxy
+    if "supervisor" in ha_url:
+        # Supervisor proxy: http://supervisor/core/api/...
+        url = f"{ha_url}/api/config/config_entries/entry?domain=kia_uvo"
+    else:
+        url = f"{ha_url}/api/config/config_entries/entry?domain=kia_uvo"
+
     headers = {"Authorization": f"Bearer {ha_token}"}
 
     try:
         print(f"[KIA_UVO] Detecting entries: GET {url}", flush=True)
+        print(f"[KIA_UVO] Using token: {ha_token[:20]}...", flush=True)
         resp = req_lib.get(url, headers=headers, timeout=(10, 30), verify=False)
-        print(f"[KIA_UVO] Detection response: HTTP {resp.status_code}", flush=True)
+        print(f"[KIA_UVO] Detection response: HTTP {resp.status_code}, body length: {len(resp.text)}", flush=True)
+        if resp.status_code != 200:
+            print(f"[KIA_UVO] Response body: {resp.text[:500]}", flush=True)
         resp.raise_for_status()
         entries = resp.json()
         print(f"[KIA_UVO] Detection result: {len(entries)} entries found", flush=True)
+        if entries:
+            for e in entries:
+                print(f"[KIA_UVO]   Entry: {e.get('entry_id', '?')} — {e.get('title', '?')}", flush=True)
         return entries
     except req_lib.exceptions.HTTPError as e:
         status = e.response.status_code if e.response is not None else "unknown"
         body = ""
         try:
-            body = e.response.text[:200] if e.response is not None else ""
+            body = e.response.text[:300] if e.response is not None else ""
         except Exception:
             pass
         print(f"[KIA_UVO] HTTP error detecting kia_uvo entries: {status} — {body}", flush=True)
@@ -117,7 +129,7 @@ def _detect_kia_uvo_entries(ha_url: str, ha_token: str) -> list[dict]:
         print("[KIA_UVO] Timeout detecting kia_uvo entries: HA did not respond within 10s", flush=True)
         return []
     except Exception as e:
-        print(f"[KIA_UVO] Unexpected error detecting kia_uvo entries: {e}", flush=True)
+        print(f"[KIA_UVO] Unexpected error detecting kia_uvo entries: {type(e).__name__}: {e}", flush=True)
         return []
 
 
@@ -431,9 +443,12 @@ def _auto_kia_uvo_transfer(vehicles: list[dict], log_fn=None):
         _log(f"Starting token transfer to {ha_url}...")
 
         # Step 2: Detect kia_uvo config entries
+        _log(f"Detecting kia_uvo entries at {ha_url}...")
         entries = _detect_kia_uvo_entries(ha_url, ha_token)
         if not entries:
             _log("Transfer skipped: kia_uvo not installed or no entries found", "warn")
+            # Try to give more info about what happened
+            _log(f"Debug: GET {ha_url}/api/config/config_entries/entry?domain=kia_uvo returned empty or error", "warn")
             return
 
         # Step 3: Match entries to vehicles
