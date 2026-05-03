@@ -87,7 +87,6 @@ def _detect_kia_uvo_entries(ha_url: str, ha_token: str) -> list[dict]:
 
     try:
         print(f"[KIA_UVO] Detecting entries: GET {url}", flush=True)
-        print(f"[KIA_UVO] Using token: {ha_token[:20]}...", flush=True)
         resp = req_lib.get(url, headers=headers, timeout=(10, 30), verify=False)
         print(f"[KIA_UVO] Detection response: HTTP {resp.status_code}, body length: {len(resp.text)}", flush=True)
         if resp.status_code != 200:

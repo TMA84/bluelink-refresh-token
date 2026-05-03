@@ -331,7 +331,7 @@ TOKEN_EXPIRY_DAYS = 180
 def _vehicle_key(brand, username):
     """Generate a unique key for a vehicle based on brand + username."""
     import hashlib
-    return f"{brand}_{hashlib.md5(username.encode()).hexdigest()[:8]}"
+    return f"{brand}_{hashlib.sha256(username.encode()).hexdigest()[:8]}"
 
 
 def update_ha_sensor(brand, username="", days_remaining=None):
