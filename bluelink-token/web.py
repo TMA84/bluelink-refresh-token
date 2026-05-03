@@ -282,9 +282,33 @@ def update_ha_sensor(brand, username="", days_remaining=None):
     try:
         now = datetime.now(timezone.utc)
         if days_remaining is not None:
-            expiry = now + timedelta(days=days_remaining)
-            remaining = days_remaining
+            # When refreshing an existing sensor, read the stored expiry date
+            # instead of recalculating from days_remaining (avoids daily drift)
+            vkey = _vehicle_key(brand, username)
+            sensor_id = f"sensor.bluelink_token_expiry_{vkey}"
+            existing_expiry = None
+            try:
+                resp = req_lib.get(
+                    f"http://supervisor/core/api/states/{sensor_id}",
+                    headers={"Authorization": f"Bearer {supervisor_token}"}, timeout=3)
+                if resp.status_code == 200:
+                    existing_state = resp.json().get("state", "")
+                    if existing_state and existing_state not in ("unknown", "unavailable"):
+                        existing_expiry = existing_state
+            except Exception:
+                pass
+            if existing_expiry:
+                # Re-publish the existing expiry date as-is (no drift)
+                from datetime import date
+                expiry_date = date.fromisoformat(existing_expiry)
+                remaining = (expiry_date - date.today()).days
+                expiry = datetime(expiry_date.year, expiry_date.month, expiry_date.day, tzinfo=timezone.utc)
+            else:
+                # No existing sensor — calculate from days_remaining
+                expiry = now + timedelta(days=days_remaining)
+                remaining = days_remaining
         else:
+            # Fresh token generation — calculate new expiry
             expiry = now + timedelta(days=TOKEN_EXPIRY_DAYS)
             remaining = TOKEN_EXPIRY_DAYS
         headers = {
@@ -301,7 +325,7 @@ def update_ha_sensor(brand, username="", days_remaining=None):
                 "friendly_name": f"Bluelink Token ({brand_name} {masked_user})",
                 "device_class": "date",
                 "icon": "mdi:key-clock",
-                "generated": (now - timedelta(days=TOKEN_EXPIRY_DAYS - remaining)).strftime("%Y-%m-%d %H:%M"),
+                "generated": (expiry - timedelta(days=TOKEN_EXPIRY_DAYS)).strftime("%Y-%m-%d %H:%M"),
                 "expires": expiry.strftime("%Y-%m-%d %H:%M"),
                 "days_remaining": remaining,
                 "brand": brand,
