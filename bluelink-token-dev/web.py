@@ -12,6 +12,8 @@ from curl_cffi import requests as curl_requests
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_v1_5
 
+from ha_kia_uvo import _auto_kia_uvo_transfer, _kia_uvo_config
+
 app = Flask(__name__)
 
 VERSION = "dev"
@@ -799,7 +801,9 @@ function evccReset() {{
     fetch(bp('/reset'), {{ method: 'POST' }}).then(function() {{ location.href = bp('/'); }});
 }}
 {"// Auto-connect if evcc is configured\nwindow.addEventListener('load', function() { document.getElementById('evcc-result').innerHTML = '<div class=\"notice notice-info\">Connecting to evcc...</div>'; evccLoadVehicles(); });" if evcc_configured else ""}
-</script>""")
+</script>
+{_render_kia_uvo_card()}
+""")
 
     elif s == "error":
         err = html_lib.escape(state.get("error", "Unknown error"))
@@ -1506,6 +1510,82 @@ def evcc_restart():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
 
+
+# ── kia_uvo Integration ────────────────────────────────────────
+
+@app.route("/api/kia_uvo/transfer", methods=["POST"])
+def kia_uvo_transfer():
+    """Manually trigger kia_uvo token transfer from the Web UI."""
+    from ha_kia_uvo import _auto_kia_uvo_transfer, _detect_kia_uvo_entries, _match_entries_to_vehicles
+
+    data = request.get_json(silent=True) or {}
+
+    # Use provided values or fall back to env vars
+    ha_url = (data.get("ha_url") or os.environ.get("HA_URL", "")).strip().rstrip("/")
+    ha_token = (data.get("ha_token") or os.environ.get("HA_TOKEN", "")).strip()
+    pin_override = (data.get("pin") or "").strip()
+
+    if not ha_url or not ha_token:
+        return jsonify({"ok": False, "error": "HA URL and Token are required."})
+
+    # Check if we have generated tokens
+    generated = [v for v in state.get("vehicles", []) if v.get("status") == "ok" and v.get("refresh_token")]
+    if not generated:
+        # Fallback: use the single token from state
+        if state.get("refresh_token"):
+            vehicles_config = _get_vehicles_config()
+            username = vehicles_config[0].get("username", "") if vehicles_config else ""
+            generated = [{"brand": "eu_kia", "username": username, "refresh_token": state["refresh_token"]}]
+        else:
+            return jsonify({"ok": False, "error": "No token generated yet. Generate a token first."})
+
+    # Build vehicle list for kia_uvo transfer
+    vehicles_config = _get_vehicles_config()
+    kia_uvo_vehicles = []
+    for sv in generated:
+        orig = next((v for v in vehicles_config if v.get("username") == sv.get("username")), {})
+        kia_uvo_vehicles.append({
+            "brand": sv.get("brand", "eu_kia"),
+            "username": sv.get("username", ""),
+            "password": sv["refresh_token"],
+            "pin": pin_override or orig.get("pin", "") or os.environ.get("HA_KIA_UVO_PIN", ""),
+        })
+
+    if not kia_uvo_vehicles:
+        return jsonify({"ok": False, "error": "No vehicles with tokens available."})
+
+    # Temporarily set env vars for the transfer (if provided via UI)
+    old_url = os.environ.get("HA_URL")
+    old_token = os.environ.get("HA_TOKEN")
+    try:
+        os.environ["HA_URL"] = ha_url
+        os.environ["HA_TOKEN"] = ha_token
+        _auto_kia_uvo_transfer(kia_uvo_vehicles, log_fn=log)
+    finally:
+        # Restore original env vars
+        if old_url is not None:
+            os.environ["HA_URL"] = old_url
+        elif "HA_URL" in os.environ:
+            del os.environ["HA_URL"]
+        if old_token is not None:
+            os.environ["HA_TOKEN"] = old_token
+        elif "HA_TOKEN" in os.environ:
+            del os.environ["HA_TOKEN"]
+
+    # Check if transfer succeeded by looking at the last log entry
+    kia_uvo_logs = [(lvl, msg) for lvl, msg in state.get("log", []) if "kia_uvo:" in msg]
+    if kia_uvo_logs:
+        last_level, last_msg = kia_uvo_logs[-1]
+        if last_level == "ok":
+            return jsonify({"ok": True, "message": "Token transferred to kia_uvo successfully!"})
+        elif last_level == "err":
+            return jsonify({"ok": False, "error": last_msg.replace("kia_uvo: ", "")})
+        elif last_level == "warn":
+            return jsonify({"ok": False, "error": last_msg.replace("kia_uvo: ", "")})
+
+    return jsonify({"ok": True, "message": "Transfer completed."})
+
+
 def _auto_start_login(force=False):
     """Auto-start headless login for all configured vehicles."""
     import sys
@@ -1596,6 +1676,27 @@ def _auto_start_login(force=False):
             _auto_evcc_transfer(evcc_url, evcc_password)
         else:
             _schedule_auto_reset()
+
+        # Auto-transfer to kia_uvo (independent of evcc)
+        if _kia_uvo_transfer_enabled():
+            try:
+                # Build vehicle list with refresh tokens as passwords for kia_uvo
+                # The reconfigure flow needs: username, password (=refresh_token), pin
+                kia_uvo_vehicles = []
+                for sv in state.get("vehicles", []):
+                    if sv.get("status") == "ok" and sv.get("refresh_token"):
+                        # Find original config to get pin
+                        orig = next((v for v in vehicles if v.get("username") == sv.get("username")), {})
+                        kia_uvo_vehicles.append({
+                            "brand": sv.get("brand", ""),
+                            "username": sv.get("username", ""),
+                            "password": sv["refresh_token"],  # refresh token is the "password" for kia_uvo
+                            "pin": orig.get("pin", ""),
+                        })
+                if kia_uvo_vehicles:
+                    _auto_kia_uvo_transfer(kia_uvo_vehicles, log_fn=log)
+            except Exception as e:
+                print(f"[KIA_UVO] Transfer error (non-fatal): {e}", flush=True)
     elif state["vehicles"]:
         state["status"] = "success"  # partial success
         log("Auto-start: some vehicles failed, check log.", "warn")
@@ -1609,6 +1710,134 @@ def _auto_start_login(force=False):
     else:
         state["status"] = "idle"
         log("Auto-start: no vehicles processed.", "warn")
+
+
+def _kia_uvo_transfer_enabled():
+    """Check if kia_uvo transfer is configured and enabled.
+
+    Returns True if _kia_uvo_config() returns a non-None config dict,
+    indicating that HA_URL and HA_TOKEN are set and transfer is not disabled.
+    """
+    return _kia_uvo_config() is not None
+
+
+def _render_kia_uvo_card():
+    """Render the kia_uvo transfer status card for the Web UI success page."""
+    ha_url = os.environ.get("HA_URL", "").strip().rstrip("/")
+    ha_token = os.environ.get("HA_TOKEN", "").strip()
+    ha_configured = bool(ha_url and ha_token)
+    ha_transfer_setting = os.environ.get("HA_KIA_UVO_TRANSFER", "").strip().lower()
+    # If explicitly disabled, don't show the card
+    if ha_transfer_setting == "false":
+        return ""
+
+    # Find kia_uvo log entries from the current session
+    kia_uvo_logs = [(lvl, msg) for lvl, msg in state.get("log", []) if "kia_uvo:" in msg]
+
+    # Status badge
+    if not kia_uvo_logs:
+        status_html = ""
+    else:
+        last_level, last_msg = kia_uvo_logs[-1]
+        if last_level == "ok" and "succeeded" in last_msg:
+            status_html = '<div class="notice notice-success" style="margin-bottom:12px;">✅ Token successfully transferred to kia_uvo integration.</div>'
+        elif last_level == "ok" and "transferred" in last_msg.lower():
+            status_html = '<div class="notice notice-success" style="margin-bottom:12px;">✅ Token successfully transferred to kia_uvo integration.</div>'
+        elif last_level == "err":
+            status_html = '<div class="notice notice-error" style="margin-bottom:12px;">❌ Transfer failed — check log for details.</div>'
+        elif last_level == "warn":
+            status_html = f'<div class="notice notice-warning" style="margin-bottom:12px;">⚠ {html_lib.escape(last_msg.replace("kia_uvo: ", ""))}</div>'
+        else:
+            status_html = ""
+
+    # Log section
+    log_lines = []
+    for lvl, msg in kia_uvo_logs:
+        cls = {"ok": "ok", "warn": "warn", "err": "err"}.get(lvl, "")
+        escaped = html_lib.escape(msg)
+        log_lines.append(f'<span class="{cls}">{escaped}</span>' if cls else escaped)
+    log_html = "<br>".join(log_lines) if log_lines else "No transfer activity yet."
+
+    # Input fields: show configured values or input fields
+    if ha_configured:
+        fields_html = f"""
+    <div class="notice notice-info" style="margin-bottom:12px;">HA connection configured via environment/addon settings.</div>
+    <div style="margin-bottom: 12px;">
+        <div class="section-label">Home Assistant URL</div>
+        <div style="font-size: 13px; color: var(--text); padding: 8px 12px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border);">
+            {html_lib.escape(ha_url)}
+        </div>
+    </div>"""
+    else:
+        fields_html = """
+    <div style="margin-bottom: 12px;">
+        <div class="section-label">Home Assistant URL</div>
+        <input type="text" id="kia-uvo-ha-url" placeholder="http://homeassistant.local:8123" style="
+            width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px;
+            font-size: 14px; font-family: inherit;">
+    </div>
+    <div style="margin-bottom: 12px;">
+        <div class="section-label">Long-Lived Access Token</div>
+        <input type="password" id="kia-uvo-ha-token" placeholder="HA Long-Lived Access Token" style="
+            width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px;
+            font-size: 14px; font-family: inherit;">
+        <div class="hint">Create under HA → Profile → Security → Long-Lived Access Tokens</div>
+    </div>
+    <div style="margin-bottom: 12px;">
+        <div class="section-label">Vehicle PIN (optional)</div>
+        <input type="password" id="kia-uvo-pin" placeholder="Vehicle PIN" style="
+            width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px;
+            font-size: 14px; font-family: inherit;">
+    </div>"""
+
+    # Button: always show send button (for manual trigger or re-send)
+    btn_html = f"""
+    <button class="btn btn-{"secondary" if ha_configured else "primary"}" onclick="kiaUvoSendToken()" id="kia-uvo-send-btn">
+        {"Re-send to kia_uvo" if kia_uvo_logs else "Send to kia_uvo"}
+    </button>"""
+
+    return f"""
+<div class="card">
+    <div class="card-title">Send to kia_uvo</div>
+    <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 16px;">
+        Transfer the refresh token to the kia_uvo Home Assistant integration via REST API.
+    </p>
+    {fields_html}
+    {status_html}
+    {btn_html}
+    <div id="kia-uvo-result" style="margin-top: 12px;"></div>
+    <details style="margin-top:12px;"><summary>Transfer log</summary><div class="log" style="max-height:150px;">{log_html}</div></details>
+</div>
+<script>
+function kiaUvoSendToken() {{
+    var btn = document.getElementById('kia-uvo-send-btn');
+    var resultDiv = document.getElementById('kia-uvo-result');
+    btn.disabled = true; btn.textContent = 'Sending...';
+    resultDiv.innerHTML = '<div class="notice notice-info">Transferring token to kia_uvo...</div>';
+    var payload = {{}};
+    var urlEl = document.getElementById('kia-uvo-ha-url');
+    var tokenEl = document.getElementById('kia-uvo-ha-token');
+    var pinEl = document.getElementById('kia-uvo-pin');
+    if (urlEl) payload.ha_url = urlEl.value;
+    if (tokenEl) payload.ha_token = tokenEl.value;
+    if (pinEl) payload.pin = pinEl.value;
+    fetch(bp('/api/kia_uvo/transfer'), {{
+        method: 'POST', headers: {{'Content-Type': 'application/json'}},
+        body: JSON.stringify(payload)
+    }}).then(function(r) {{ return r.json(); }}).then(function(d) {{
+        btn.disabled = false; btn.textContent = 'Re-send to kia_uvo';
+        if (d.ok) {{
+            resultDiv.innerHTML = '<div class="notice notice-success">✅ ' + (d.message || 'Token transferred successfully!') + '</div>';
+        }} else {{
+            resultDiv.innerHTML = '<div class="notice notice-error">❌ ' + (d.error || 'Transfer failed') + '</div>';
+        }}
+    }}).catch(function(e) {{
+        btn.disabled = false; btn.textContent = 'Re-send to kia_uvo';
+        resultDiv.innerHTML = '<div class="notice notice-error">❌ Connection error: ' + e + '</div>';
+    }});
+}}
+{"// Auto-send if HA is configured and transfer just completed\n" if ha_configured and not kia_uvo_logs else ""}
+</script>"""
 
 
 def _auto_evcc_transfer(evcc_url, evcc_password):

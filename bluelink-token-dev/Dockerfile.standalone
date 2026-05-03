@@ -1,0 +1,20 @@
+FROM python:3.12-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:${PATH}"
+RUN pip install --no-cache-dir requests flask gunicorn curl_cffi pycryptodome
+
+WORKDIR /app
+
+COPY web.py ha_kia_uvo.py config.yaml /app/
+
+EXPOSE 9877
+
+ENV BRAND=eu_kia
+ENV FLASK_ENV=development
+
+CMD ["gunicorn", "--bind", "0.0.0.0:9877", "--workers", "1", "--threads", "4", "--timeout", "300", "web:app"]
