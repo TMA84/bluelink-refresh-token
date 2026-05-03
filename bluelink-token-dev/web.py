@@ -1609,6 +1609,16 @@ def _kia_uvo_transfer_enabled():
     return _kia_uvo_config() is not None
 
 
+def _kia_uvo_auto_send_js(ha_configured, kia_uvo_logs):
+    """Generate JS to auto-trigger kia_uvo transfer on page load if configured but not yet run."""
+    if ha_configured and not kia_uvo_logs:
+        return """window.addEventListener('load', function() {
+    document.getElementById('kia-uvo-result').innerHTML = '<div class="notice notice-info">Transferring token to kia_uvo...</div>';
+    kiaUvoSendToken();
+});"""
+    return ""
+
+
 def _render_kia_uvo_card():
     """Render the kia_uvo transfer status card for the Web UI success page."""
     ha_url = os.environ.get("HA_URL", "").strip().rstrip("/")
@@ -1636,13 +1646,13 @@ def _render_kia_uvo_card():
     else:
         last_level, last_msg = kia_uvo_logs[-1]
         if last_level == "ok" and "succeeded" in last_msg:
-            status_html = '<div class="notice notice-success" style="margin-bottom:12px;">✅ Token successfully transferred to kia_uvo integration.</div>'
+            status_html = '<div class="notice notice-success" style="margin-bottom:12px;">Token successfully transferred to kia_uvo integration.</div>'
         elif last_level == "ok" and "transferred" in last_msg.lower():
-            status_html = '<div class="notice notice-success" style="margin-bottom:12px;">✅ Token successfully transferred to kia_uvo integration.</div>'
+            status_html = '<div class="notice notice-success" style="margin-bottom:12px;">Token successfully transferred to kia_uvo integration.</div>'
         elif last_level == "err":
-            status_html = '<div class="notice notice-error" style="margin-bottom:12px;">❌ Transfer failed — check addon log for details.</div>'
+            status_html = '<div class="notice notice-error" style="margin-bottom:12px;">Transfer failed — check addon log for details.</div>'
         elif last_level == "warn":
-            status_html = f'<div class="notice notice-warning" style="margin-bottom:12px;">⚠ {html_lib.escape(last_msg.replace("kia_uvo: ", ""))}</div>'
+            status_html = f'<div class="notice notice-warning" style="margin-bottom:12px;">{html_lib.escape(last_msg.replace("kia_uvo: ", ""))}</div>'
         else:
             status_html = ""
 
@@ -1718,16 +1728,16 @@ function kiaUvoSendToken() {{
     }}).then(function(r) {{ return r.json(); }}).then(function(d) {{
         btn.disabled = false; btn.textContent = 'Re-send to kia_uvo';
         if (d.ok) {{
-            resultDiv.innerHTML = '<div class="notice notice-success">✅ ' + (d.message || 'Token transferred successfully!') + '</div>';
+            resultDiv.innerHTML = '<div class="notice notice-success">' + (d.message || 'Token transferred successfully!') + '</div>';
         }} else {{
-            resultDiv.innerHTML = '<div class="notice notice-error">❌ ' + (d.error || 'Transfer failed') + '</div>';
+            resultDiv.innerHTML = '<div class="notice notice-error">' + (d.error || 'Transfer failed') + '</div>';
         }}
     }}).catch(function(e) {{
         btn.disabled = false; btn.textContent = 'Re-send to kia_uvo';
-        resultDiv.innerHTML = '<div class="notice notice-error">❌ Connection error: ' + e + '</div>';
+        resultDiv.innerHTML = '<div class="notice notice-error">Connection error: ' + e + '</div>';
     }});
 }}
-{"// Auto-send if HA is configured and transfer just completed\n" if ha_configured and not kia_uvo_logs else ""}
+{_kia_uvo_auto_send_js(ha_configured, kia_uvo_logs)}
 </script>"""
 
 
