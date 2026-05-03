@@ -1404,17 +1404,23 @@ def evcc_restart():
 @app.route("/api/kia_uvo/transfer", methods=["POST"])
 def kia_uvo_transfer():
     """Manually trigger kia_uvo token transfer from the Web UI."""
-    from kia_uvo import _auto_kia_uvo_transfer, _detect_kia_uvo_entries, _match_entries_to_vehicles
+    from kia_uvo import _auto_kia_uvo_transfer, _kia_uvo_config
 
     data = request.get_json(silent=True) or {}
 
-    # Use provided values or fall back to env vars
-    ha_url = (data.get("ha_url") or os.environ.get("HA_URL", "")).strip().rstrip("/")
-    ha_token = (data.get("ha_token") or os.environ.get("HA_TOKEN", "")).strip()
+    # Use provided values or fall back to _kia_uvo_config() (handles SUPERVISOR_TOKEN)
+    ha_url = (data.get("ha_url") or "").strip().rstrip("/")
+    ha_token = (data.get("ha_token") or "").strip()
     pin_override = (data.get("pin") or "").strip()
 
+    # If no URL/token provided in request, use the module's config logic
     if not ha_url or not ha_token:
-        return jsonify({"ok": False, "error": "HA URL and Token are required."})
+        config = _kia_uvo_config()
+        if config:
+            ha_url = config["ha_url"]
+            ha_token = config["ha_token"]
+        else:
+            return jsonify({"ok": False, "error": "HA URL and Token are required."})
 
     # Check if we have generated tokens
     generated = [v for v in state.get("vehicles", []) if v.get("status") == "ok" and v.get("refresh_token")]
@@ -1442,23 +1448,8 @@ def kia_uvo_transfer():
     if not kia_uvo_vehicles:
         return jsonify({"ok": False, "error": "No vehicles with tokens available."})
 
-    # Temporarily set env vars for the transfer (if provided via UI)
-    old_url = os.environ.get("HA_URL")
-    old_token = os.environ.get("HA_TOKEN")
-    try:
-        os.environ["HA_URL"] = ha_url
-        os.environ["HA_TOKEN"] = ha_token
-        _auto_kia_uvo_transfer(kia_uvo_vehicles, log_fn=log)
-    finally:
-        # Restore original env vars
-        if old_url is not None:
-            os.environ["HA_URL"] = old_url
-        elif "HA_URL" in os.environ:
-            del os.environ["HA_URL"]
-        if old_token is not None:
-            os.environ["HA_TOKEN"] = old_token
-        elif "HA_TOKEN" in os.environ:
-            del os.environ["HA_TOKEN"]
+    # Run the transfer (uses _kia_uvo_config() internally for auth)
+    _auto_kia_uvo_transfer(kia_uvo_vehicles, log_fn=log)
 
     # Check if transfer succeeded by looking at the last log entry
     kia_uvo_logs = [(lvl, msg) for lvl, msg in state.get("log", []) if "kia_uvo:" in msg]
