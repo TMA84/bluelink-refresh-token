@@ -165,56 +165,15 @@ mode: single
 
 ## evcc Integration
 
-If `evcc_url` is configured, tokens are automatically transferred to evcc after generation:
+→ **[Full evcc Integration Guide](EVCC.md)**
 
-1. Connects to evcc and logs in (if password is set)
-2. Finds all Hyundai/Kia vehicles
-3. Matches the correct token to each vehicle by brand (Kia token → Kia vehicle, Hyundai token → Hyundai vehicle)
-4. Restarts evcc
-
-This works with evcc running as a HA app, Docker container, or native installation.
+If `evcc_url` is configured, tokens are automatically transferred to evcc after generation. This works with evcc running as a HA add-on, Docker container, or native installation.
 
 ## kia_uvo Integration
 
-The add-on can automatically transfer the generated refresh token to the [Kia/Hyundai Connect integration](https://github.com/Hyundai-Kia-Connect/kia_uvo) (kia_uvo) in Home Assistant.
+→ **[Full kia_uvo Integration Guide](KIA_UVO.md)**
 
-### How it works
-
-After generating a token, the add-on:
-
-1. Detects if kia_uvo is installed in Home Assistant
-2. If a config entry exists → runs the reconfigure flow to update the token
-3. If no config entry exists → runs the initial setup flow to configure the integration
-
-This happens **fully automatically** — no manual token copying needed.
-
-### Requirements
-
-- The [kia_uvo integration](https://github.com/Hyundai-Kia-Connect/kia_uvo) must be installed via HACS
-- The add-on uses the Supervisor API automatically (no additional configuration needed)
-
-### Configuration (Addon)
-
-No configuration needed — the add-on detects kia_uvo automatically and uses the Supervisor token for authentication.
-
-Optional settings (only needed for Docker/standalone):
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `ha_kia_uvo_transfer` | Enable/disable transfer (`auto`, `true`, `false`) | `auto` |
-| `ha_kia_uvo_pin` | Vehicle PIN for kia_uvo | |
-| `ha_url` | HA URL (only for Docker/standalone) | |
-| `ha_token` | HA Long-Lived Access Token (only for Docker/standalone) | |
-
-### Web UI
-
-The "Send to kia_uvo" card in the Web UI shows:
-- Transfer status (success/failure)
-- "Re-send to kia_uvo" button for manual trigger
-
-### First-time setup
-
-If kia_uvo is installed but not yet configured, the add-on will automatically create the config entry on the first token generation. No manual configuration in HA needed.
+The add-on can automatically transfer the generated refresh token to the [Kia/Hyundai Connect integration](https://github.com/Hyundai-Kia-Connect/kia_uvo) (kia_uvo) in Home Assistant — fully automatic, no manual token copying needed.
 
 ## Where to use the token
 

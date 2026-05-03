@@ -236,3 +236,10 @@ healthcheck:
 The image is a multi-arch manifest:
 - `amd64` — Intel/AMD (x86_64)
 - `aarch64` — Apple Silicon, Raspberry Pi, ODROID
+
+## Related Documentation
+
+- [API Documentation](API.md) — REST API for programmatic token retrieval
+- [evcc Integration](EVCC.md) — Automatic token transfer to evcc
+- [kia_uvo Integration](KIA_UVO.md) — Automatic token transfer to kia_uvo in Home Assistant
+- [Home Assistant Setup](HOME_ASSISTANT.md) — Add-on installation for HAOS/Supervised
