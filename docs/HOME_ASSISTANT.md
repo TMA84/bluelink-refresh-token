@@ -1,5 +1,18 @@
 # Home Assistant Setup
 
+## Requirements
+
+This add-on requires **Home Assistant OS (HAOS)** or a **Supervised** installation. These are the only installation types that support the Add-on store.
+
+| HA Installation Type | Add-on supported? | Alternative |
+|---|---|---|
+| Home Assistant OS (HAOS) | ✅ Yes | — |
+| Supervised | ✅ Yes | — |
+| Container (Docker) | ❌ No | Use [Docker setup](DOCKER.md) alongside your HA container |
+| Core (venv) | ❌ No | Use [Docker setup](DOCKER.md) or [Standalone app](../README.md#standalone-apps-windows-macos-linux) |
+
+> **Not a HACS integration:** This is a Home Assistant **Add-on** (installed via the Add-on store), not a HACS custom component. You will not find it in HACS. The generated token is used with the separate [Kia/Hyundai Connect integration](https://github.com/Hyundai-Kia-Connect/kia_uvo).
+
 ## Installation
 
 1. Add this repository to your Home Assistant app store:

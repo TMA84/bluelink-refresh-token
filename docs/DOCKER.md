@@ -1,5 +1,37 @@
 # Docker / Podman Setup
 
+This is the recommended method if you:
+- Run Home Assistant as a Docker container (no Add-on store available)
+- Use a NAS (Synology, QNAP, Unraid, TrueNAS)
+- Have any Linux server with Docker installed
+
+The container runs independently — it does not need to be installed "inside" Home Assistant.
+
+## NAS Quick Start (Synology, QNAP, Unraid)
+
+### Synology (Container Manager / Docker)
+
+1. Open **Container Manager** (or Docker package on older DSM)
+2. Go to **Registry** → search for `ghcr.io/tma84/bluelink-token`
+3. Download the `latest` tag
+4. Create a container with:
+   - **Port:** Local port `9876` → Container port `9876`
+   - **Environment variables:** see [Environment Variables](#environment-variables) below
+   - **Command:** `/run-standalone.sh`
+5. Start the container and open `http://your-nas-ip:9876`
+
+### QNAP (Container Station)
+
+1. Open **Container Station**
+2. Click **Create** → **Create Application** (or use Docker CLI via SSH)
+3. Use the Docker Compose example below
+4. Access the Web UI at `http://your-nas-ip:9876`
+
+### Unraid
+
+1. Open a terminal and run the `docker run` command below
+2. Or add via **Docker** tab → **Add Container** with the image `ghcr.io/tma84/bluelink-token:latest`
+
 ## Docker Compose (recommended)
 
 ```yaml
