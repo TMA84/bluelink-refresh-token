@@ -13,10 +13,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 import requests
 
-# Add parent directory to path so we can import ha_kia_uvo
+# Add parent directory to path so we can import kia_uvo
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from ha_kia_uvo import (
+from kia_uvo import (
     _auto_kia_uvo_transfer,
     _detect_kia_uvo_entries,
     _kia_uvo_config,
@@ -152,7 +152,7 @@ class TestDetectKiaUvoEntries:
         mock_response.json.return_value = sample_config_entries
         mock_response.raise_for_status = MagicMock()
 
-        with patch("ha_kia_uvo.req_lib.get", return_value=mock_response):
+        with patch("kia_uvo.req_lib.get", return_value=mock_response):
             result = _detect_kia_uvo_entries("http://ha.local:8123", "test-token")
 
         assert result == sample_config_entries
@@ -168,7 +168,7 @@ class TestDetectKiaUvoEntries:
         mock_response.json.return_value = []
         mock_response.raise_for_status = MagicMock()
 
-        with patch("ha_kia_uvo.req_lib.get", return_value=mock_response):
+        with patch("kia_uvo.req_lib.get", return_value=mock_response):
             result = _detect_kia_uvo_entries("http://ha.local:8123", "test-token")
 
         assert result == []
@@ -183,7 +183,7 @@ class TestDetectKiaUvoEntries:
         http_error = requests.exceptions.HTTPError(response=mock_response)
         mock_response.raise_for_status.side_effect = http_error
 
-        with patch("ha_kia_uvo.req_lib.get", return_value=mock_response):
+        with patch("kia_uvo.req_lib.get", return_value=mock_response):
             result = _detect_kia_uvo_entries("http://ha.local:8123", "test-token")
 
         assert result == []
@@ -198,7 +198,7 @@ class TestDetectKiaUvoEntries:
         http_error = requests.exceptions.HTTPError(response=mock_response)
         mock_response.raise_for_status.side_effect = http_error
 
-        with patch("ha_kia_uvo.req_lib.get", return_value=mock_response):
+        with patch("kia_uvo.req_lib.get", return_value=mock_response):
             result = _detect_kia_uvo_entries("http://ha.local:8123", "test-token")
 
         assert result == []
@@ -209,7 +209,7 @@ class TestDetectKiaUvoEntries:
         Validates: Requirements 5.1
         """
         with patch(
-            "ha_kia_uvo.req_lib.get",
+            "kia_uvo.req_lib.get",
             side_effect=requests.exceptions.ConnectionError("Connection refused"),
         ):
             result = _detect_kia_uvo_entries("http://ha.local:8123", "test-token")
@@ -222,7 +222,7 @@ class TestDetectKiaUvoEntries:
         Validates: Requirements 5.1
         """
         with patch(
-            "ha_kia_uvo.req_lib.get",
+            "kia_uvo.req_lib.get",
             side_effect=requests.exceptions.Timeout("Connection timed out"),
         ):
             result = _detect_kia_uvo_entries("http://ha.local:8123", "test-token")
@@ -239,7 +239,7 @@ class TestDetectKiaUvoEntries:
         mock_response.json.return_value = []
         mock_response.raise_for_status = MagicMock()
 
-        with patch("ha_kia_uvo.req_lib.get", return_value=mock_response) as mock_get:
+        with patch("kia_uvo.req_lib.get", return_value=mock_response) as mock_get:
             _detect_kia_uvo_entries("http://ha.local:8123", "my-secret-token")
 
         mock_get.assert_called_once_with(
@@ -387,7 +387,7 @@ class TestReconfigureKiaUvoEntry:
             mock_resp.json.return_value = sample_flow_responses[step_key]
             responses.append(mock_resp)
 
-        with patch("ha_kia_uvo.req_lib.post", side_effect=responses):
+        with patch("kia_uvo.req_lib.post", side_effect=responses):
             result = _reconfigure_kia_uvo_entry(
                 ha_url="http://ha.local:8123",
                 ha_token="test-token",
@@ -411,7 +411,7 @@ class TestReconfigureKiaUvoEntry:
         http_error = requests.exceptions.HTTPError(response=mock_resp)
         mock_resp.raise_for_status.side_effect = http_error
 
-        with patch("ha_kia_uvo.req_lib.post", return_value=mock_resp):
+        with patch("kia_uvo.req_lib.post", return_value=mock_resp):
             result = _reconfigure_kia_uvo_entry(
                 ha_url="http://ha.local:8123",
                 ha_token="test-token",
@@ -438,7 +438,7 @@ class TestReconfigureKiaUvoEntry:
         http_error = requests.exceptions.HTTPError(response=step2_resp)
         step2_resp.raise_for_status.side_effect = http_error
 
-        with patch("ha_kia_uvo.req_lib.post", side_effect=[step1_resp, step2_resp]):
+        with patch("kia_uvo.req_lib.post", side_effect=[step1_resp, step2_resp]):
             result = _reconfigure_kia_uvo_entry(
                 ha_url="http://ha.local:8123",
                 ha_token="test-token",
@@ -470,7 +470,7 @@ class TestReconfigureKiaUvoEntry:
         http_error = requests.exceptions.HTTPError(response=step3_resp)
         step3_resp.raise_for_status.side_effect = http_error
 
-        with patch("ha_kia_uvo.req_lib.post", side_effect=[step1_resp, step2_resp, step3_resp]):
+        with patch("kia_uvo.req_lib.post", side_effect=[step1_resp, step2_resp, step3_resp]):
             result = _reconfigure_kia_uvo_entry(
                 ha_url="http://ha.local:8123",
                 ha_token="test-token",
@@ -508,7 +508,7 @@ class TestReconfigureKiaUvoEntry:
         step4_resp.raise_for_status.side_effect = http_error
 
         with patch(
-            "ha_kia_uvo.req_lib.post",
+            "kia_uvo.req_lib.post",
             side_effect=[step1_resp, step2_resp, step3_resp, step4_resp],
         ):
             result = _reconfigure_kia_uvo_entry(
@@ -532,7 +532,7 @@ class TestReconfigureKiaUvoEntry:
         mock_resp.raise_for_status = MagicMock()
         mock_resp.json.return_value = {"type": "form", "step_id": "init"}  # no flow_id
 
-        with patch("ha_kia_uvo.req_lib.post", return_value=mock_resp):
+        with patch("kia_uvo.req_lib.post", return_value=mock_resp):
             result = _reconfigure_kia_uvo_entry(
                 ha_url="http://ha.local:8123",
                 ha_token="test-token",
@@ -554,7 +554,7 @@ class TestReconfigureKiaUvoEntry:
         mock_resp.raise_for_status = MagicMock()
         mock_resp.json.side_effect = ValueError("No JSON object could be decoded")
 
-        with patch("ha_kia_uvo.req_lib.post", return_value=mock_resp):
+        with patch("kia_uvo.req_lib.post", return_value=mock_resp):
             result = _reconfigure_kia_uvo_entry(
                 ha_url="http://ha.local:8123",
                 ha_token="test-token",
@@ -572,7 +572,7 @@ class TestReconfigureKiaUvoEntry:
         Validates: Requirements 5.4
         """
         with patch(
-            "ha_kia_uvo.req_lib.post",
+            "kia_uvo.req_lib.post",
             side_effect=requests.exceptions.Timeout("Connection timed out"),
         ):
             result = _reconfigure_kia_uvo_entry(
@@ -592,7 +592,7 @@ class TestReconfigureKiaUvoEntry:
         Validates: Requirements 5.1
         """
         with patch(
-            "ha_kia_uvo.req_lib.post",
+            "kia_uvo.req_lib.post",
             side_effect=requests.exceptions.ConnectionError("Connection refused"),
         ):
             result = _reconfigure_kia_uvo_entry(
@@ -623,7 +623,7 @@ class TestAutoKiaUvoTransfer:
 
         Validates: Requirements 1.6
         """
-        with patch("ha_kia_uvo._kia_uvo_config", return_value=None):
+        with patch("kia_uvo._kia_uvo_config", return_value=None):
             # Should not raise
             _auto_kia_uvo_transfer([{"username": "user@example.com", "password": "pass"}])
 
@@ -632,7 +632,7 @@ class TestAutoKiaUvoTransfer:
 
         Validates: Requirements 2.3
         """
-        with patch("ha_kia_uvo._detect_kia_uvo_entries", return_value=[]):
+        with patch("kia_uvo._detect_kia_uvo_entries", return_value=[]):
             _auto_kia_uvo_transfer([{"username": "user@example.com", "password": "pass"}])
 
     def test_skips_when_no_matches(self, mock_ha_env, sample_config_entries):
@@ -642,7 +642,7 @@ class TestAutoKiaUvoTransfer:
         """
         vehicles = [{"username": "nomatch@example.com", "password": "pass"}]
 
-        with patch("ha_kia_uvo._detect_kia_uvo_entries", return_value=sample_config_entries):
+        with patch("kia_uvo._detect_kia_uvo_entries", return_value=sample_config_entries):
             _auto_kia_uvo_transfer(vehicles)
 
     def test_calls_reconfigure_for_each_match(
@@ -652,8 +652,8 @@ class TestAutoKiaUvoTransfer:
 
         Validates: Requirements 3.1, 3.5
         """
-        with patch("ha_kia_uvo._detect_kia_uvo_entries", return_value=sample_config_entries), \
-             patch("ha_kia_uvo._reconfigure_kia_uvo_entry", return_value=True) as mock_reconf:
+        with patch("kia_uvo._detect_kia_uvo_entries", return_value=sample_config_entries), \
+             patch("kia_uvo._reconfigure_kia_uvo_entry", return_value=True) as mock_reconf:
             _auto_kia_uvo_transfer(sample_vehicles)
 
         # Should be called twice (one for each matched pair)
@@ -680,8 +680,8 @@ class TestAutoKiaUvoTransfer:
         entries = [{"entry_id": "e1", "data": {"username": "user@example.com", "region": 2, "brand": 1}}]
         vehicles = [{"username": "user@example.com", "password": "pass", "pin": "9999"}]
 
-        with patch("ha_kia_uvo._detect_kia_uvo_entries", return_value=entries), \
-             patch("ha_kia_uvo._reconfigure_kia_uvo_entry", return_value=True) as mock_reconf:
+        with patch("kia_uvo._detect_kia_uvo_entries", return_value=entries), \
+             patch("kia_uvo._reconfigure_kia_uvo_entry", return_value=True) as mock_reconf:
             _auto_kia_uvo_transfer(vehicles)
 
         # Vehicle pin "9999" should be used, not env var "0000"
@@ -696,8 +696,8 @@ class TestAutoKiaUvoTransfer:
         entries = [{"entry_id": "e1", "data": {"username": "user@example.com", "region": 2, "brand": 1}}]
         vehicles = [{"username": "user@example.com", "password": "pass"}]  # no pin field
 
-        with patch("ha_kia_uvo._detect_kia_uvo_entries", return_value=entries), \
-             patch("ha_kia_uvo._reconfigure_kia_uvo_entry", return_value=True) as mock_reconf:
+        with patch("kia_uvo._detect_kia_uvo_entries", return_value=entries), \
+             patch("kia_uvo._reconfigure_kia_uvo_entry", return_value=True) as mock_reconf:
             _auto_kia_uvo_transfer(vehicles)
 
         # Should use env var "0000" (set by mock_ha_env fixture)
@@ -709,6 +709,6 @@ class TestAutoKiaUvoTransfer:
 
         Validates: Requirements 5.3
         """
-        with patch("ha_kia_uvo._kia_uvo_config", side_effect=RuntimeError("Unexpected!")):
+        with patch("kia_uvo._kia_uvo_config", side_effect=RuntimeError("Unexpected!")):
             # Should not raise
             _auto_kia_uvo_transfer([{"username": "user@example.com", "password": "pass"}])

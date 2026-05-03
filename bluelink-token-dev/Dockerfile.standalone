@@ -10,7 +10,7 @@ RUN pip install --no-cache-dir requests flask gunicorn curl_cffi pycryptodome
 
 WORKDIR /app
 
-COPY web.py ha_kia_uvo.py ha_evcc.py config.yaml /app/
+COPY web.py kia_uvo.py evcc.py config.yaml /app/
 
 EXPOSE 9877
 

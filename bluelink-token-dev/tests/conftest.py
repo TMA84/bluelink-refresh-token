@@ -14,7 +14,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
-# --- Environment variable keys used by ha_kia_uvo ---
+# --- Environment variable keys used by kia_uvo ---
 _HA_ENV_KEYS = [
     "HA_URL",
     "HA_TOKEN",

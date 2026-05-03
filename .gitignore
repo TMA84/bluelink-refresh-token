@@ -1,3 +1,5 @@
 forum-post.md
 .DS_Store
 bluelink_refresh_token/
+__pycache__/
+*.pyc

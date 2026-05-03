@@ -11,10 +11,10 @@ from unittest.mock import MagicMock, patch
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-# Add parent directory to path so we can import ha_kia_uvo
+# Add parent directory to path so we can import kia_uvo
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from ha_kia_uvo import _detect_kia_uvo_entries, _match_entries_to_vehicles
+from kia_uvo import _detect_kia_uvo_entries, _match_entries_to_vehicles
 
 
 # --- Strategies ---
@@ -87,7 +87,7 @@ class TestEntryIdExtractionCompleteness:
         mock_response.json.return_value = entries
         mock_response.raise_for_status = MagicMock()
 
-        with patch("ha_kia_uvo.req_lib.get", return_value=mock_response):
+        with patch("kia_uvo.req_lib.get", return_value=mock_response):
             result = _detect_kia_uvo_entries("http://ha.local:8123", "test-token")
 
         # All entry_ids from input should be present in result
@@ -114,7 +114,7 @@ class TestEntryIdExtractionCompleteness:
         mock_response.json.return_value = entries
         mock_response.raise_for_status = MagicMock()
 
-        with patch("ha_kia_uvo.req_lib.get", return_value=mock_response):
+        with patch("kia_uvo.req_lib.get", return_value=mock_response):
             result = _detect_kia_uvo_entries("http://ha.local:8123", "test-token")
 
         # Result should have same length as input (no duplicates introduced)
@@ -203,7 +203,7 @@ class TestUsernameBasedEntryMatching:
 
 import requests as req_lib_module
 
-from ha_kia_uvo import _reconfigure_kia_uvo_entry
+from kia_uvo import _reconfigure_kia_uvo_entry
 
 # Strategy for HTTP error status codes (4xx and 5xx)
 http_error_status_st = st.one_of(
@@ -319,7 +319,7 @@ class TestReconfigureFlowResilience:
                 raise effect
             return effect
 
-        with patch("ha_kia_uvo.req_lib.post", side_effect=post_side_effect):
+        with patch("kia_uvo.req_lib.post", side_effect=post_side_effect):
             # This should NOT raise any exception
             result = _reconfigure_kia_uvo_entry(
                 ha_url="http://ha.local:8123",
@@ -372,7 +372,7 @@ class TestReconfigureFlowResilience:
                 raise effect
             return effect
 
-        with patch("ha_kia_uvo.req_lib.post", side_effect=post_side_effect):
+        with patch("kia_uvo.req_lib.post", side_effect=post_side_effect):
             # The function must complete without raising
             try:
                 _reconfigure_kia_uvo_entry(
@@ -419,7 +419,7 @@ class TestHttpErrorResilienceDuringDetection:
         http_error = req_lib_module.exceptions.HTTPError(response=mock_response)
         mock_response.raise_for_status.side_effect = http_error
 
-        with patch("ha_kia_uvo.req_lib.get", return_value=mock_response):
+        with patch("kia_uvo.req_lib.get", return_value=mock_response):
             result = _detect_kia_uvo_entries("http://ha.local:8123", "test-token")
 
         assert result == [], (
@@ -438,7 +438,7 @@ class TestHttpErrorResilienceDuringDetection:
         http_error = req_lib_module.exceptions.HTTPError(response=mock_response)
         mock_response.raise_for_status.side_effect = http_error
 
-        with patch("ha_kia_uvo.req_lib.get", return_value=mock_response):
+        with patch("kia_uvo.req_lib.get", return_value=mock_response):
             try:
                 _detect_kia_uvo_entries("http://ha.local:8123", "test-token")
             except Exception as e:
@@ -458,7 +458,7 @@ class TestHttpErrorResilienceDuringDetection:
         _ = data.draw(http_error_status_st)
 
         with patch(
-            "ha_kia_uvo.req_lib.get",
+            "kia_uvo.req_lib.get",
             side_effect=req_lib_module.exceptions.Timeout("Connection timed out"),
         ):
             try:
@@ -481,7 +481,7 @@ class TestHttpErrorResilienceDuringDetection:
         _ = data.draw(http_error_status_st)
 
         with patch(
-            "ha_kia_uvo.req_lib.get",
+            "kia_uvo.req_lib.get",
             side_effect=req_lib_module.exceptions.ConnectionError("Connection refused"),
         ):
             try:
@@ -504,7 +504,7 @@ class TestHttpErrorResilienceDuringDetection:
         _ = data.draw(http_error_status_st)
 
         with patch(
-            "ha_kia_uvo.req_lib.get",
+            "kia_uvo.req_lib.get",
             side_effect=RuntimeError("Something unexpected happened"),
         ):
             try:

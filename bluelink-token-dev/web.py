@@ -12,8 +12,8 @@ from curl_cffi import requests as curl_requests
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_v1_5
 
-from ha_kia_uvo import _auto_kia_uvo_transfer, _kia_uvo_config
-from ha_evcc import (
+from kia_uvo import _auto_kia_uvo_transfer, _kia_uvo_config
+from evcc import (
     _auto_evcc_transfer as _auto_evcc_transfer_impl,
     evcc_get_vehicles,
     evcc_update_vehicle,
@@ -1404,7 +1404,7 @@ def evcc_restart():
 @app.route("/api/kia_uvo/transfer", methods=["POST"])
 def kia_uvo_transfer():
     """Manually trigger kia_uvo token transfer from the Web UI."""
-    from ha_kia_uvo import _auto_kia_uvo_transfer, _detect_kia_uvo_entries, _match_entries_to_vehicles
+    from kia_uvo import _auto_kia_uvo_transfer, _detect_kia_uvo_entries, _match_entries_to_vehicles
 
     data = request.get_json(silent=True) or {}
 
