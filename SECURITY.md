@@ -13,9 +13,8 @@ If you discover a security vulnerability, please report it responsibly:
 
 1. **Do not** open a public GitHub issue
 2. Use [GitHub Security Advisories](https://github.com/TMA84/bluelink-refresh-token/security/advisories/new) to report privately
-3. Or email: security@malcherek.dev
 
-You can expect an initial response within 48 hours. I'll work with you to understand the issue and coordinate a fix before any public disclosure.
+I'll work with you to understand the issue and coordinate a fix before any public disclosure.
 
 ## Scope
 
