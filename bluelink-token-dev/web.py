@@ -1439,14 +1439,16 @@ def kia_uvo_transfer():
         return jsonify({"ok": False, "error": "No vehicles with tokens available."})
 
     # Run the transfer (uses _kia_uvo_config() internally for auth)
+    log_count_before = len(state.get("log", []))
     _auto_kia_uvo_transfer(kia_uvo_vehicles, log_fn=log)
 
-    # Check if transfer succeeded by looking at the last log entry
-    kia_uvo_logs = [(lvl, msg) for lvl, msg in state.get("log", []) if "kia_uvo:" in msg]
-    if kia_uvo_logs:
-        last_level, last_msg = kia_uvo_logs[-1]
+    # Check if transfer succeeded by looking at NEW log entries only
+    all_logs = state.get("log", [])
+    new_logs = [(lvl, msg) for lvl, msg in all_logs[log_count_before:] if "kia_uvo:" in msg]
+    if new_logs:
+        last_level, last_msg = new_logs[-1]
         if last_level == "ok":
-            return jsonify({"ok": True, "message": "Token transferred to kia_uvo successfully!"})
+            return jsonify({"ok": True, "message": last_msg.replace("kia_uvo: ", "")})
         elif last_level == "err":
             return jsonify({"ok": False, "error": last_msg.replace("kia_uvo: ", "")})
         elif last_level == "warn":
