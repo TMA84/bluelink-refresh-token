@@ -195,13 +195,13 @@ jobs:
         if: matrix.os_name == 'Windows'
         run: |
           cd standalone
-          pyinstaller --onefile --name BluelinkTokenGenerator.exe --add-data "web.py;." --hidden-import curl_cffi --hidden-import Crypto --collect-all curl_cffi --collect-all Crypto bluelink_token.py
+          pyinstaller --onefile --name BluelinkTokenGenerator.exe --add-data "web.py;." --add-data "kia_uvo.py;." --add-data "evcc.py;." --hidden-import curl_cffi --hidden-import Crypto --collect-all curl_cffi --collect-all Crypto bluelink_token.py
 
       - name: Build executable (Linux)
         if: matrix.os_name == 'Linux'
         run: |
           cd standalone
-          pyinstaller --onefile --name BluelinkTokenGenerator-Linux --add-data "web.py:." --hidden-import curl_cffi --hidden-import Crypto --collect-all curl_cffi --collect-all Crypto bluelink_token.py
+          pyinstaller --onefile --name BluelinkTokenGenerator-Linux --add-data "web.py:." --add-data "kia_uvo.py:." --add-data "evcc.py:." --hidden-import curl_cffi --hidden-import Crypto --collect-all curl_cffi --collect-all Crypto bluelink_token.py
 
       - name: Create Linux AppImage
         if: matrix.os_name == 'Linux'
@@ -237,7 +237,7 @@ jobs:
         if: matrix.os_name == 'macOS'
         run: |
           cd standalone
-          pyinstaller --windowed --onefile --name "Bluelink Token Generator" --add-data "web.py:." --hidden-import curl_cffi --hidden-import Crypto --collect-all curl_cffi --collect-all Crypto bluelink_token.py
+          pyinstaller --windowed --onefile --name "Bluelink Token Generator" --add-data "web.py:." --add-data "kia_uvo.py:." --add-data "evcc.py:." --hidden-import curl_cffi --hidden-import Crypto --collect-all curl_cffi --collect-all Crypto bluelink_token.py
 
       - name: Create macOS DMG
         if: matrix.os_name == 'macOS'
