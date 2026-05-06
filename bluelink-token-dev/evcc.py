@@ -52,18 +52,23 @@ def _auto_evcc_transfer(evcc_url, evcc_password, state, log_fn=None):
             _log("Auto-start: no Hyundai/Kia vehicles found in evcc", "warn")
             return
         _log(f"Auto-start: found {len(vehicles)} vehicle(s) in evcc", "ok")
-        # Build a map of brand → token from generated vehicles
-        token_map = {}
+        # Build maps for token matching:
+        # 1. username → token (precise matching by account)
+        # 2. brand → token (fallback for single-vehicle setups)
+        token_by_username = {}
+        token_by_brand = {}
         for sv in state.get("vehicles", []):
             if sv.get("status") == "ok" and sv.get("refresh_token"):
-                # Map both "kia" and "hyundai" to match evcc template names
+                username = sv.get("username", "").lower()
                 brand_name = sv.get("brand_name", "").lower()
-                token_map[brand_name] = sv["refresh_token"]
-        if not token_map:
+                if username:
+                    token_by_username[username] = sv["refresh_token"]
+                token_by_brand[brand_name] = sv["refresh_token"]
+        if not token_by_brand:
             # Fallback: use the last generated token for all
-            token_map["kia"] = state.get("refresh_token", "")
-            token_map["hyundai"] = state.get("refresh_token", "")
-        _log(f"Auto-start: tokens available for: {', '.join(token_map.keys())}")
+            token_by_brand["kia"] = state.get("refresh_token", "")
+            token_by_brand["hyundai"] = state.get("refresh_token", "")
+        _log(f"Auto-start: tokens available for {len(token_by_username)} account(s)")
 
         for v in vehicles:
             vid = v["id"]
@@ -76,9 +81,14 @@ def _auto_evcc_transfer(evcc_url, evcc_password, state, log_fn=None):
                     continue
                 vehicle_data = cfg_resp.json()
                 cfg = vehicle_data.get("config", {})
-                # Find the right token for this vehicle's brand
+                # Find the right token: first try username match, then brand fallback
+                evcc_user = cfg.get("user", "").lower()
                 tmpl = cfg.get("template", "").lower()
-                token = token_map.get(tmpl, token_map.get("kia", token_map.get("hyundai", "")))
+                token = None
+                if evcc_user and evcc_user in token_by_username:
+                    token = token_by_username[evcc_user]
+                else:
+                    token = token_by_brand.get(tmpl, token_by_brand.get("kia", token_by_brand.get("hyundai", "")))
                 if not token:
                     _log(f"Auto-start: no token available for {title} (template: {tmpl})", "warn")
                     continue
