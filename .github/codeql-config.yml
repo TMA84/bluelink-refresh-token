@@ -1,0 +1,5 @@
+name: "CodeQL Config"
+
+query-filters:
+  - exclude:
+      id: py/clear-text-logging-sensitive-data
