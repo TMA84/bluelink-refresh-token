@@ -1021,10 +1021,11 @@ def _headless_login_eu(username, password, config):
     s.headers.update({"User-Agent": config["user_agent"]})
 
     # Step 1: Load authorize page to get session cookies
+    country = os.environ.get("COUNTRY", "DE").lower()
     log(f"Headless: loading authorize page ({host})...")
     auth_url = (f"{host}/auth/api/v2/user/oauth2/authorize"
                 f"?response_type=code&client_id={client_id}"
-                f"&redirect_uri={redirect_uri}&lang=de&state=ccsp&country=de")
+                f"&redirect_uri={redirect_uri}&lang={country}&state=ccsp&country={country}")
     resp = s.get(auth_url, allow_redirects=True)
     log(f"Headless: authorize page loaded (HTTP {resp.status_code}, cookies: {list(s.cookies.keys())})")
 
