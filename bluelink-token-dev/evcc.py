@@ -92,6 +92,10 @@ def _auto_evcc_transfer(evcc_url, evcc_password, state, log_fn=None):
                 if not token:
                     _log(f"Auto-start: no token available for {title} (template: {tmpl})", "warn")
                     continue
+                # Skip if token is already set in evcc
+                if cfg.get("password") == token:
+                    _log(f"Auto-start: {title} already has current token, skipping", "ok")
+                    continue
                 cfg["password"] = token
                 payload = {"type": vehicle_data.get("type", "template")}
                 payload.update(cfg)
