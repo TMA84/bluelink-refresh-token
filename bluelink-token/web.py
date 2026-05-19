@@ -680,7 +680,9 @@ addVehicle(); // Start with one vehicle form
         when configuring the evcc or Home Assistant integration.
     </p>
     <div class="actions">
-        {_render_verify_button(evcc_configured)}
+        <form method="POST" action="" onsubmit="event.preventDefault();fetch(bp('/test'),{{method:'POST'}}).then(function(){{location.href=bp('/')}})" style="margin:0;">
+            <button type="submit" class="btn btn-secondary">Verify token</button>
+        </form>
         <form method="POST" action="" onsubmit="event.preventDefault();fetch(bp('/reset'),{{method:'POST'}}).then(function(){{location.href=bp('/')}})" style="margin:0;">
             <button type="submit" class="btn btn-danger">Reset</button>
         </form>
@@ -1019,11 +1021,10 @@ def _headless_login_eu(username, password, config):
     s.headers.update({"User-Agent": config["user_agent"]})
 
     # Step 1: Load authorize page to get session cookies
-    country = os.environ.get("COUNTRY", "DE").lower()
     log(f"Headless: loading authorize page ({host})...")
     auth_url = (f"{host}/auth/api/v2/user/oauth2/authorize"
                 f"?response_type=code&client_id={client_id}"
-                f"&redirect_uri={redirect_uri}&lang={country}&state=ccsp&country={country}")
+                f"&redirect_uri={redirect_uri}&lang=de&state=ccsp&country=de")
     resp = s.get(auth_url, allow_redirects=True)
     log(f"Headless: authorize page loaded (HTTP {resp.status_code}, cookies: {list(s.cookies.keys())})")
 
@@ -1549,37 +1550,34 @@ def _auto_start_login(force=False):
             _send_ha_notification(
                 "Bluelink Token Generated",
                 f"Token(s) generated for {len(generated)} vehicle(s).")
-        # Schedule auto-transfer in a separate thread (delayed 10s)
-        # This allows the web server to handle verify requests in the meantime
-        def _delayed_transfers():
-            time.sleep(10)
-            log("Starting auto-transfer...")
-            # Auto-transfer to evcc
-            evcc_url = os.environ.get("EVCC_URL", "").rstrip("/")
-            evcc_password = os.environ.get("EVCC_PASSWORD", "")
-            if evcc_url:
-                _auto_evcc_transfer(evcc_url, evcc_password)
-            # Auto-transfer to kia_uvo (independent of evcc)
-            if _kia_uvo_transfer_enabled():
-                try:
-                    kia_uvo_vehicles = []
-                    for sv in state.get("vehicles", []):
-                        if sv.get("status") == "ok" and sv.get("refresh_token"):
-                            orig = next((v for v in vehicles if v.get("username") == sv.get("username")), {})
-                            kia_uvo_vehicles.append({
-                                "brand": sv.get("brand", ""),
-                                "username": sv.get("username", ""),
-                                "password": sv["refresh_token"],
-                                "pin": orig.get("pin", ""),
-                            })
-                    if kia_uvo_vehicles:
-                        _auto_kia_uvo_transfer(kia_uvo_vehicles, log_fn=log)
-                except Exception as e:
-                    print(f"[KIA_UVO] Transfer error (non-fatal): {e}", flush=True)
-            if not evcc_url:
-                _schedule_auto_reset()
+        # Auto-transfer to evcc
+        evcc_url = os.environ.get("EVCC_URL", "").rstrip("/")
+        evcc_password = os.environ.get("EVCC_PASSWORD", "")
+        if evcc_url:
+            _auto_evcc_transfer(evcc_url, evcc_password)
+        else:
+            _schedule_auto_reset()
 
-        threading.Thread(target=_delayed_transfers, daemon=True).start()
+        # Auto-transfer to kia_uvo (independent of evcc)
+        if _kia_uvo_transfer_enabled():
+            try:
+                # Build vehicle list with refresh tokens as passwords for kia_uvo
+                # The reconfigure flow needs: username, password (=refresh_token), pin
+                kia_uvo_vehicles = []
+                for sv in state.get("vehicles", []):
+                    if sv.get("status") == "ok" and sv.get("refresh_token"):
+                        # Find original config to get pin
+                        orig = next((v for v in vehicles if v.get("username") == sv.get("username")), {})
+                        kia_uvo_vehicles.append({
+                            "brand": sv.get("brand", ""),
+                            "username": sv.get("username", ""),
+                            "password": sv["refresh_token"],  # refresh token is the "password" for kia_uvo
+                            "pin": orig.get("pin", ""),
+                        })
+                if kia_uvo_vehicles:
+                    _auto_kia_uvo_transfer(kia_uvo_vehicles, log_fn=log)
+            except Exception as e:
+                print(f"[KIA_UVO] Transfer error (non-fatal): {e}", flush=True)
     elif state["vehicles"]:
         state["status"] = "success"  # partial success
         log("Auto-start: some vehicles failed, check log.", "warn")
@@ -1595,11 +1593,6 @@ def _auto_start_login(force=False):
         log("Auto-start: no vehicles processed.", "warn")
 
 
-def _render_verify_button(evcc_configured):
-    """Render the verify button — always shown since transfers are delayed 10s."""
-    return '<form method="POST" action="" onsubmit="event.preventDefault();fetch(bp(\'/test\'),{method:\'POST\'}).then(function(){location.href=bp(\'/\')})" style="margin:0;"><button type="submit" class="btn btn-secondary">Verify token</button></form>'
-
-
 def _kia_uvo_transfer_enabled():
     """Check if kia_uvo transfer is configured and enabled.
 
@@ -1610,7 +1603,12 @@ def _kia_uvo_transfer_enabled():
 
 
 def _kia_uvo_auto_send_js(ha_configured, kia_uvo_logs):
-    """No auto-trigger needed — transfer runs automatically in _auto_start_login()."""
+    """Generate JS to auto-trigger kia_uvo transfer on page load if configured but not yet run."""
+    if ha_configured and not kia_uvo_logs:
+        return """window.addEventListener('load', function() {
+    document.getElementById('kia-uvo-result').innerHTML = '<div class="notice notice-info">Transferring token to kia_uvo...</div>';
+    kiaUvoSendToken();
+});"""
     return ""
 
 
