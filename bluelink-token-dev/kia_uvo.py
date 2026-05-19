@@ -11,6 +11,7 @@ gracefully without disrupting the main flow.
 """
 
 import os
+import threading
 from datetime import datetime, timezone
 
 import requests as req_lib
@@ -18,6 +19,9 @@ import urllib3
 
 # Suppress InsecureRequestWarning for self-signed HA certs
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# Lock to prevent concurrent transfers
+_transfer_lock = threading.Lock()
 
 
 def _kia_uvo_config() -> dict | None:
@@ -529,6 +533,11 @@ def _auto_kia_uvo_transfer(vehicles: list[dict], log_fn=None, force=False):
             log_fn(f"kia_uvo: {msg}", level)
 
     try:
+        # Prevent concurrent transfers
+        if not _transfer_lock.acquire(blocking=False):
+            _log("Transfer skipped: another transfer is already running")
+            return
+
         # Check if we already transferred since last token generation
         if not force:
             from evcc import _get_last_transfer_time
@@ -664,3 +673,6 @@ def _auto_kia_uvo_transfer(vehicles: list[dict], log_fn=None, force=False):
     except Exception as e:
         # Top-level catch: never crash the caller
         _log(f"Unexpected error: {e}", "err")
+    finally:
+        if _transfer_lock.locked():
+            _transfer_lock.release()
