@@ -802,7 +802,7 @@ function evccDone(msg) {{
     var resendBtn = document.getElementById('evcc-resend-btn');
     if (resendBtn) resendBtn.style.display = '';
 }}
-{"// Auto-connect if evcc is configured\nwindow.addEventListener('load', function() { document.getElementById('evcc-result').innerHTML = '<div class=\"notice notice-info\">Connecting to evcc...</div>'; evccLoadVehicles(); });" if evcc_configured else ""}
+{"" if evcc_configured else ""}
 </script>
 {_render_kia_uvo_card()}
 """)
