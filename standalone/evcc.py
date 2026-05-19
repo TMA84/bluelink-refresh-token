@@ -104,6 +104,9 @@ def _auto_evcc_transfer(evcc_url, evcc_password, state, log_fn=None):
                     _log(f"Auto-start: token sent to {title}", "ok")
                 else:
                     _log(f"Auto-start: failed to update {title} ({resp.status_code}): {resp.text[:200]}", "warn")
+            except (req_lib.exceptions.ConnectionError, ConnectionError):
+                # Connection error during update is OK — evcc may be restarting
+                _log(f"Auto-start: token sent to {title} (connection closed, evcc may be restarting)", "ok")
             except Exception as e:
                 _log(f"Auto-start: error updating {title}: {e}", "warn")
         # Restart evcc
