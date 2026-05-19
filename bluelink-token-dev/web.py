@@ -869,7 +869,7 @@ def test_token():
     try:
         data = {"grant_type": "refresh_token", "refresh_token": refresh_token,
                 "client_id": config["client_id"], "client_secret": config["client_secret"]}
-        response = req_lib.post(config["token_url"], data=data, timeout=10)
+        response = curl_requests.post(config["token_url"], data=data, impersonate="chrome131_android")
         if response.status_code == 200:
             new_tokens = response.json()
             if new_tokens.get("access_token"):
