@@ -680,9 +680,7 @@ addVehicle(); // Start with one vehicle form
         when configuring the evcc or Home Assistant integration.
     </p>
     <div class="actions">
-        <form method="POST" action="" onsubmit="event.preventDefault();fetch(bp('/test'),{{method:'POST'}}).then(function(){{location.href=bp('/')}})" style="margin:0;">
-            <button type="submit" class="btn btn-secondary">Verify token</button>
-        </form>
+        {_render_verify_button(evcc_configured)}
         <form method="POST" action="" onsubmit="event.preventDefault();fetch(bp('/reset'),{{method:'POST'}}).then(function(){{location.href=bp('/')}})" style="margin:0;">
             <button type="submit" class="btn btn-danger">Reset</button>
         </form>
@@ -1594,6 +1592,13 @@ def _auto_start_login(force=False):
         log("Auto-start: no vehicles processed.", "warn")
 
 
+def _render_verify_button(evcc_configured):
+    """Render the verify button only when no auto-transfer is configured."""
+    if _kia_uvo_transfer_enabled() or evcc_configured:
+        return ""
+    return '<form method="POST" action="" onsubmit="event.preventDefault();fetch(bp(\'/test\'),{method:\'POST\'}).then(function(){location.href=bp(\'/\')})" style="margin:0;"><button type="submit" class="btn btn-secondary">Verify token</button></form>'
+
+
 def _kia_uvo_transfer_enabled():
     """Check if kia_uvo transfer is configured and enabled.
 
@@ -1604,12 +1609,7 @@ def _kia_uvo_transfer_enabled():
 
 
 def _kia_uvo_auto_send_js(ha_configured, kia_uvo_logs):
-    """Generate JS to auto-trigger kia_uvo transfer on page load if configured but not yet run."""
-    if ha_configured and not kia_uvo_logs:
-        return """window.addEventListener('load', function() {
-    document.getElementById('kia-uvo-result').innerHTML = '<div class="notice notice-info">Transferring token to kia_uvo...</div>';
-    kiaUvoSendToken();
-});"""
+    """No auto-trigger needed — transfer runs automatically in _auto_start_login()."""
     return ""
 
 

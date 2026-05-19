@@ -41,7 +41,6 @@ def _kia_uvo_config() -> dict | None:
     if supervisor_token:
         ha_url = "http://supervisor/core"
         ha_token = supervisor_token
-        print(f"[KIA_UVO] Using SUPERVISOR_TOKEN with {ha_url}", flush=True)
     elif not ha_url or not ha_token:
         # No supervisor token and no manual config
         return None
