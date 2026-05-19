@@ -860,18 +860,21 @@ def _schedule_auto_reset():
 
 @app.route("/test", methods=["POST"])
 def test_token():
-    brand = get_brand()
-    config = BRAND_CONFIG[brand]
+    # Use the brand from the generated vehicle, not the global default
+    generated = [v for v in state.get("vehicles", []) if v.get("status") == "ok"]
+    if generated:
+        brand = generated[0].get("brand", get_brand())
+    else:
+        brand = get_brand()
+    config = BRAND_CONFIG.get(brand, BRAND_CONFIG[get_brand()])
     refresh_token = state.get("refresh_token")
     if not refresh_token:
         state["test_result"] = "No refresh token available."
         return flask_redirect("/")
     try:
-        print(f"[VERIFY] Token: {refresh_token[:10]}...{refresh_token[-5:]}, brand: {brand}, url: {config['token_url']}", flush=True)
         data = {"grant_type": "refresh_token", "refresh_token": refresh_token,
                 "client_id": config["client_id"], "client_secret": config["client_secret"]}
         response = curl_requests.post(config["token_url"], data=data, impersonate="chrome131_android")
-        print(f"[VERIFY] Response: HTTP {response.status_code}", flush=True)
         if response.status_code == 200:
             new_tokens = response.json()
             if new_tokens.get("access_token"):
@@ -880,10 +883,9 @@ def test_token():
             else:
                 state["test_result"] = "No access token in response"
         else:
-            print(f"[VERIFY] Error body: {response.text[:300]}", flush=True)
             state["test_result"] = f"Token refresh failed ({response.status_code}): {response.text[:150]}"
     except Exception as e:
-        print(f"[VERIFY] Exception: {type(e).__name__}: {e}", flush=True)
+        print(f"[ERROR] {e}", flush=True)
         state["test_result"] = "An internal error occurred."
     return flask_redirect("/")
 

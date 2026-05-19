@@ -860,8 +860,13 @@ def _schedule_auto_reset():
 
 @app.route("/test", methods=["POST"])
 def test_token():
-    brand = get_brand()
-    config = BRAND_CONFIG[brand]
+    # Use the brand from the generated vehicle, not the global default
+    generated = [v for v in state.get("vehicles", []) if v.get("status") == "ok"]
+    if generated:
+        brand = generated[0].get("brand", get_brand())
+    else:
+        brand = get_brand()
+    config = BRAND_CONFIG.get(brand, BRAND_CONFIG[get_brand()])
     refresh_token = state.get("refresh_token")
     if not refresh_token:
         state["test_result"] = "No refresh token available."
