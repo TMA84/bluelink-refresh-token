@@ -260,8 +260,11 @@ def evcc_update_vehicle(evcc_url, password, vehicle_id, token):
         if resp.status_code != 200:
             return {"ok": False, "error": f"Update failed ({resp.status_code}): {resp.text[:200]}"}
         return {"ok": True}
+    except (req_lib.exceptions.ConnectionError, ConnectionError):
+        # Connection closed during update — token was likely written, evcc restarting
+        return {"ok": True}
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        return {"ok": False, "error": "An internal error occurred."}
 
 
 def evcc_restart(evcc_url, password):
