@@ -4,6 +4,7 @@ Handles automatic token transfer from bluelink-refresh-token to evcc.
 """
 
 import os
+from datetime import datetime, timezone
 
 import requests as req_lib
 import urllib3
@@ -12,7 +13,29 @@ import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
-def _auto_evcc_transfer(evcc_url, evcc_password, state, log_fn=None):
+def _get_last_transfer_time(target):
+    """Get the timestamp of the last successful transfer for a target (evcc/kia_uvo).
+
+    Returns datetime or None if no transfer has been recorded.
+    """
+    try:
+        with open(f"/data/last_transfer_{target}.txt") as f:
+            return datetime.fromisoformat(f.read().strip())
+    except Exception:
+        return None
+
+
+def _save_transfer_time(target):
+    """Save the current time as the last successful transfer for a target."""
+    try:
+        os.makedirs("/data", exist_ok=True)
+        with open(f"/data/last_transfer_{target}.txt", "w") as f:
+            f.write(datetime.now(timezone.utc).isoformat())
+    except Exception:
+        pass
+
+
+def _auto_evcc_transfer(evcc_url, evcc_password, state, log_fn=None, force=False):
     """Auto-transfer refresh token to evcc after successful login.
 
     Args:
@@ -20,12 +43,31 @@ def _auto_evcc_transfer(evcc_url, evcc_password, state, log_fn=None):
         evcc_password: evcc admin password
         state: application state dict with vehicles and tokens
         log_fn: optional logging callback (msg, level)
+        force: if True, skip the "already transferred" check
     """
     def _log(msg, level="info"):
         if log_fn:
             log_fn(msg, level)
 
     try:
+        # Check if we already transferred since last token generation
+        if not force:
+            last_transfer = _get_last_transfer_time("evcc")
+            last_gen = None
+            try:
+                # Find the most recent token generation timestamp
+                for fname in os.listdir("/data"):
+                    if fname.startswith("token_generated_"):
+                        with open(f"/data/{fname}") as f:
+                            ts = datetime.fromisoformat(f.read().strip())
+                            if last_gen is None or ts > last_gen:
+                                last_gen = ts
+            except Exception:
+                pass
+            if last_transfer and last_gen and last_transfer > last_gen:
+                _log("Auto-start: evcc already has latest token, skipping", "ok")
+                return
+
         _log(f"Auto-start: connecting to evcc ({evcc_url})...")
         session = req_lib.Session()
         session.verify = False
@@ -119,12 +161,14 @@ def _auto_evcc_transfer(evcc_url, evcc_password, state, log_fn=None):
                                     timeout=30)
                 if resp.status_code == 200:
                     _log("Auto-start: evcc restarted via HA Supervisor", "ok")
+                    _save_transfer_time("evcc")
                     return
             except Exception:
                 pass
         try:
             session.post(f"{evcc_url}/api/system/shutdown", timeout=10)
             _log("Auto-start: evcc restart triggered", "ok")
+            _save_transfer_time("evcc")
         except Exception:
             _log("Auto-start: could not restart evcc automatically", "warn")
     except Exception as e:

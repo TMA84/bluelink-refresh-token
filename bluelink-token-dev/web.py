@@ -1455,7 +1455,7 @@ def kia_uvo_transfer():
 
     # Run the transfer (uses _kia_uvo_config() internally for auth)
     log_count_before = len(state.get("log", []))
-    _auto_kia_uvo_transfer(kia_uvo_vehicles, log_fn=log)
+    _auto_kia_uvo_transfer(kia_uvo_vehicles, log_fn=log, force=True)
 
     # Check if transfer succeeded by looking at NEW log entries only
     all_logs = state.get("log", [])

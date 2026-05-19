@@ -11,6 +11,7 @@ gracefully without disrupting the main flow.
 """
 
 import os
+from datetime import datetime, timezone
 
 import requests as req_lib
 import urllib3
@@ -506,7 +507,7 @@ def _setup_kia_uvo_entry(
     return True
 
 
-def _auto_kia_uvo_transfer(vehicles: list[dict], log_fn=None):
+def _auto_kia_uvo_transfer(vehicles: list[dict], log_fn=None, force=False):
     """Main entry point for kia_uvo token transfer.
 
     Called after successful token generation. Orchestrates the full transfer
@@ -528,6 +529,24 @@ def _auto_kia_uvo_transfer(vehicles: list[dict], log_fn=None):
             log_fn(f"kia_uvo: {msg}", level)
 
     try:
+        # Check if we already transferred since last token generation
+        if not force:
+            from evcc import _get_last_transfer_time
+            last_transfer = _get_last_transfer_time("kia_uvo")
+            last_gen = None
+            try:
+                for fname in os.listdir("/data"):
+                    if fname.startswith("token_generated_"):
+                        with open(f"/data/{fname}") as f:
+                            ts = datetime.fromisoformat(f.read().strip())
+                            if last_gen is None or ts > last_gen:
+                                last_gen = ts
+            except Exception:
+                pass
+            if last_transfer and last_gen and last_transfer > last_gen:
+                _log("Transfer skipped: kia_uvo already has latest token", "ok")
+                return
+
         # Step 1: Get configuration
         config = _kia_uvo_config()
         if config is None:
@@ -580,8 +599,12 @@ def _auto_kia_uvo_transfer(vehicles: list[dict], log_fn=None):
 
             if fail_count == 0 and success_count > 0:
                 _log(f"Setup complete: {success_count} succeeded", "ok")
+                from evcc import _save_transfer_time
+                _save_transfer_time("kia_uvo")
             elif success_count > 0:
                 _log(f"Setup complete: {success_count} succeeded, {fail_count} failed", "warn")
+                from evcc import _save_transfer_time
+                _save_transfer_time("kia_uvo")
             else:
                 _log("Setup failed for all vehicles", "err")
             return
@@ -629,10 +652,14 @@ def _auto_kia_uvo_transfer(vehicles: list[dict], log_fn=None):
                 fail_count += 1
                 _log(f"Failed to transfer token for {username}", "err")
 
-        if fail_count == 0:
+        if fail_count == 0 and success_count > 0:
             _log(f"Transfer complete: {success_count} succeeded", "ok")
-        else:
+            from evcc import _save_transfer_time
+            _save_transfer_time("kia_uvo")
+        elif success_count > 0:
             _log(f"Transfer complete: {success_count} succeeded, {fail_count} failed", "warn")
+            from evcc import _save_transfer_time
+            _save_transfer_time("kia_uvo")
 
     except Exception as e:
         # Top-level catch: never crash the caller
