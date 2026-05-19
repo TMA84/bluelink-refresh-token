@@ -1560,12 +1560,15 @@ def _auto_start_login(force=False):
         evcc_url = os.environ.get("EVCC_URL", "").rstrip("/")
         evcc_password = os.environ.get("EVCC_PASSWORD", "")
         if evcc_url:
+            state["_evcc_transferring"] = True
             _auto_evcc_transfer(evcc_url, evcc_password)
+            state["_evcc_transferring"] = False
         else:
             _schedule_auto_reset()
 
         # Auto-transfer to kia_uvo (independent of evcc)
         if _kia_uvo_transfer_enabled():
+            state["_kia_uvo_transferring"] = True
             try:
                 # Build vehicle list with refresh tokens as passwords for kia_uvo
                 # The reconfigure flow needs: username, password (=refresh_token), pin
@@ -1584,6 +1587,8 @@ def _auto_start_login(force=False):
                     _auto_kia_uvo_transfer(kia_uvo_vehicles, log_fn=log)
             except Exception as e:
                 print(f"[KIA_UVO] Transfer error (non-fatal): {e}", flush=True)
+            finally:
+                state["_kia_uvo_transferring"] = False
     elif state["vehicles"]:
         state["status"] = "success"  # partial success
         log("Auto-start: some vehicles failed, check log.", "warn")
@@ -1610,6 +1615,9 @@ def _kia_uvo_transfer_enabled():
 
 def _render_evcc_status():
     """Render the evcc transfer status badge."""
+    # Check if transfer is currently running
+    if state.get("_evcc_transferring"):
+        return '<div class="notice notice-info" style="margin-bottom:12px;">Transferring token to evcc...</div>'
     from evcc import _get_last_transfer_time
     last_transfer = _get_last_transfer_time("evcc")
     if last_transfer:
@@ -1659,10 +1667,12 @@ def _render_kia_uvo_card():
     # Find kia_uvo log entries from the current session
     kia_uvo_logs = [(lvl, msg) for lvl, msg in state.get("log", []) if "kia_uvo:" in msg]
 
-    # Status badge — check timestamp first, then log
+    # Status badge — check if transferring, then timestamp, then log
     from evcc import _get_last_transfer_time
     last_kia_transfer = _get_last_transfer_time("kia_uvo")
-    if last_kia_transfer:
+    if state.get("_kia_uvo_transferring"):
+        status_html = '<div class="notice notice-info" style="margin-bottom:12px;">Transferring token to kia_uvo...</div>'
+    elif last_kia_transfer:
         age = datetime.now(timezone.utc) - last_kia_transfer
         if age.days > 0:
             time_str = f"{age.days} day(s) ago"
