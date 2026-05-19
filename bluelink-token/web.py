@@ -698,8 +698,9 @@ addVehicle(); // Start with one vehicle form
     <input type="hidden" id="evcc-url" value="{html_lib.escape(os.environ.get('EVCC_URL', ''))}">
     <input type="hidden" id="evcc-password" value="{html_lib.escape(os.environ.get('EVCC_PASSWORD', ''))}">
     {evcc_fields_html}
+    {_render_evcc_status()}
     {"" if evcc_configured else '<button class="btn btn-secondary" onclick="evccLoadVehicles()" id="evcc-connect-btn">Connect</button>'}
-    {"<button class=\"btn btn-secondary\" onclick=\"evccLoadVehicles()\" id=\"evcc-resend-btn\" style=\"display:none;\">Re-send to evcc</button>" if evcc_configured else ""}
+    {"<button class=\"btn btn-secondary\" onclick=\"evccLoadVehicles()\" id=\"evcc-resend-btn\">Re-send to evcc</button>" if evcc_configured else ""}
     <div id="evcc-vehicles" style="display:none; margin-top: 16px;">
         <div class="section-label">Vehicles</div>
         <div id="evcc-vehicle-list" style="margin-bottom: 12px;"></div>
@@ -1607,6 +1608,26 @@ def _kia_uvo_transfer_enabled():
     return _kia_uvo_config() is not None
 
 
+def _render_evcc_status():
+    """Render the evcc transfer status badge."""
+    from evcc import _get_last_transfer_time
+    last_transfer = _get_last_transfer_time("evcc")
+    if last_transfer:
+        age = datetime.now(timezone.utc) - last_transfer
+        if age.days > 0:
+            time_str = f"{age.days} day(s) ago"
+        elif age.seconds > 3600:
+            time_str = f"{age.seconds // 3600}h ago"
+        else:
+            time_str = f"{age.seconds // 60}min ago"
+        return f'<div class="notice notice-success" style="margin-bottom:12px;">Token transferred to evcc ({time_str})</div>'
+    # Check log for recent transfer
+    evcc_logs = [(lvl, msg) for lvl, msg in state.get("log", []) if "Auto-start:" in msg and "token sent" in msg.lower()]
+    if evcc_logs:
+        return '<div class="notice notice-success" style="margin-bottom:12px;">Token transferred to evcc</div>'
+    return ""
+
+
 def _kia_uvo_auto_send_js(ha_configured, kia_uvo_logs):
     """Generate JS to auto-trigger kia_uvo transfer on page load if configured but not yet run."""
     if ha_configured and not kia_uvo_logs:
@@ -1638,21 +1659,30 @@ def _render_kia_uvo_card():
     # Find kia_uvo log entries from the current session
     kia_uvo_logs = [(lvl, msg) for lvl, msg in state.get("log", []) if "kia_uvo:" in msg]
 
-    # Status badge
-    if not kia_uvo_logs:
-        status_html = ""
-    else:
+    # Status badge — check timestamp first, then log
+    from evcc import _get_last_transfer_time
+    last_kia_transfer = _get_last_transfer_time("kia_uvo")
+    if last_kia_transfer:
+        age = datetime.now(timezone.utc) - last_kia_transfer
+        if age.days > 0:
+            time_str = f"{age.days} day(s) ago"
+        elif age.seconds > 3600:
+            time_str = f"{age.seconds // 3600}h ago"
+        else:
+            time_str = f"{age.seconds // 60}min ago"
+        status_html = f'<div class="notice notice-success" style="margin-bottom:12px;">Token transferred to kia_uvo ({time_str})</div>'
+    elif kia_uvo_logs:
         last_level, last_msg = kia_uvo_logs[-1]
-        if last_level == "ok" and "succeeded" in last_msg:
-            status_html = '<div class="notice notice-success" style="margin-bottom:12px;">Token successfully transferred to kia_uvo integration.</div>'
-        elif last_level == "ok" and "transferred" in last_msg.lower():
-            status_html = '<div class="notice notice-success" style="margin-bottom:12px;">Token successfully transferred to kia_uvo integration.</div>'
+        if last_level == "ok" and ("succeeded" in last_msg or "transferred" in last_msg.lower()):
+            status_html = '<div class="notice notice-success" style="margin-bottom:12px;">Token transferred to kia_uvo integration.</div>'
         elif last_level == "err":
             status_html = '<div class="notice notice-error" style="margin-bottom:12px;">Transfer failed — check addon log for details.</div>'
         elif last_level == "warn":
             status_html = f'<div class="notice notice-warning" style="margin-bottom:12px;">{html_lib.escape(last_msg.replace("kia_uvo: ", ""))}</div>'
         else:
             status_html = ""
+    else:
+        status_html = ""
 
     # Input fields: only show when running standalone without any HA connection
     if is_addon:
