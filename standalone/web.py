@@ -806,6 +806,35 @@ function evccDone(msg) {{
 {"" if evcc_configured else ""}
 </script>
 {_render_kia_uvo_card()}
+<script>
+(function pollStatus() {{
+    fetch(bp('/api/status')).then(function(r){{ return r.json(); }}).then(function(d) {{
+        // Update log
+        var logEl = document.querySelector('.log');
+        if (logEl && d.log) logEl.innerHTML = d.log;
+        // Update evcc status
+        var evccResult = document.getElementById('evcc-result');
+        if (evccResult && d.evcc_transfer === 'transferring') {{
+            evccResult.innerHTML = '<div class="notice notice-info">Transferring token to evcc...</div>';
+        }} else if (evccResult && d.evcc_transfer === 'done' && !evccResult.innerHTML.includes('notice-success')) {{
+            evccResult.innerHTML = '<div class="notice notice-success">Token transferred to evcc</div>';
+        }}
+        // Update kia_uvo status
+        var kiaResult = document.getElementById('kia-uvo-result');
+        if (kiaResult && d.kia_uvo_transfer === 'transferring') {{
+            kiaResult.innerHTML = '<div class="notice notice-info">Transferring token to kia_uvo...</div>';
+        }} else if (kiaResult && d.kia_uvo_transfer === 'done' && !kiaResult.innerHTML.includes('notice-success')) {{
+            kiaResult.innerHTML = '<div class="notice notice-success">Token transferred to kia_uvo</div>';
+        }}
+        // Keep polling while transfers are active
+        if (d.evcc_transfer === 'transferring' || d.kia_uvo_transfer === 'transferring') {{
+            setTimeout(pollStatus, 2000);
+        }} else {{
+            setTimeout(pollStatus, 10000);
+        }}
+    }}).catch(function(){{ setTimeout(pollStatus, 5000); }});
+}})();
+</script>
 """)
 
     elif s == "error":
@@ -1131,7 +1160,15 @@ def _headless_login_eu(username, password, config):
 
 @app.route("/api/status")
 def api_status():
-    return jsonify({"status": state["status"], "log": format_log()})
+    from evcc import _get_last_transfer_time
+    evcc_status = "transferring" if state.get("_evcc_transferring") else ("done" if _get_last_transfer_time("evcc") else "idle")
+    kia_uvo_status = "transferring" if state.get("_kia_uvo_transferring") else ("done" if _get_last_transfer_time("kia_uvo") else "idle")
+    return jsonify({
+        "status": state["status"],
+        "log": format_log(),
+        "evcc_transfer": evcc_status,
+        "kia_uvo_transfer": kia_uvo_status,
+    })
 
 
 @app.route("/health")
