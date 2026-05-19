@@ -90,6 +90,7 @@ class TestKiaUvoIntegrationWithAutoStartLogin:
              patch.object(web, "_auto_kia_uvo_transfer", mock_kia_uvo_transfer), \
              patch.object(web, "_auto_evcc_transfer", mock_evcc_transfer), \
              patch.object(web, "_schedule_auto_reset", mock_schedule_reset), \
+             patch("time.sleep", MagicMock()), \
              patch.dict(os.environ, env_vars, clear=False):
             # Reset state for the test
             web.state["status"] = "idle"

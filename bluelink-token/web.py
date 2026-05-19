@@ -1549,6 +1549,10 @@ def _auto_start_login(force=False):
             _send_ha_notification(
                 "Bluelink Token Generated",
                 f"Token(s) generated for {len(generated)} vehicle(s).")
+        # Delay before auto-transfer to allow verify button usage
+        log("Waiting 10s before auto-transfer...")
+        time.sleep(10)
+
         # Auto-transfer to evcc
         evcc_url = os.environ.get("EVCC_URL", "").rstrip("/")
         evcc_password = os.environ.get("EVCC_PASSWORD", "")
@@ -1593,9 +1597,7 @@ def _auto_start_login(force=False):
 
 
 def _render_verify_button(evcc_configured):
-    """Render the verify button only when no auto-transfer is configured."""
-    if _kia_uvo_transfer_enabled() or evcc_configured:
-        return ""
+    """Render the verify button — always shown since transfers are delayed 10s."""
     return '<form method="POST" action="" onsubmit="event.preventDefault();fetch(bp(\'/test\'),{method:\'POST\'}).then(function(){location.href=bp(\'/\')})" style="margin:0;"><button type="submit" class="btn btn-secondary">Verify token</button></form>'
 
 
