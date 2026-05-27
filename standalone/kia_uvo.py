@@ -574,6 +574,7 @@ def _auto_kia_uvo_transfer(vehicles: list[dict], log_fn=None, force=False):
         BRAND_TO_REGION = {
             "eu_kia": ("1", "1"),       # Europe, Kia
             "eu_hyundai": ("1", "2"),   # Europe, Hyundai
+            "eu_genesis": ("1", "3"),   # Europe, Genesis
         }
 
         if not entries:

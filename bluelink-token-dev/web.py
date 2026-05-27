@@ -129,12 +129,25 @@ BRAND_CONFIG = {
         "region_name": "Europe",
         "brand_name": "Hyundai",
     },
+    "eu_genesis": {
+        "client_id": "3020afa2-30ff-412a-aa51-d28fbe901e10",
+        "client_secret": "FKDdlef2ffdleFEweELFKERiLER2FED21sDdwdgQz6hFESE3",
+        "login_url": "https://idpconnect-eu.genesis.com/auth/api/v2/user/oauth2/authorize?response_type=code&client_id=3020afa2-30ff-412a-aa51-d28fbe901e10&redirect_uri=https://accounts-eu.genesis.com/realms/eugenesisidm/ga-api/redirect2&lang=de&state=ccsp&country=de",
+        "token_url": "https://idpconnect-eu.genesis.com/auth/api/v2/user/oauth2/token",
+        "redirect_url_final": "https://accounts-eu.genesis.com/realms/eugenesisidm/ga-api/redirect2",
+        "redirect_url": "https://idpconnect-eu.genesis.com/auth/api/v2/user/oauth2/authorize?response_type=code&client_id=3020afa2-30ff-412a-aa51-d28fbe901e10&redirect_uri=https://accounts-eu.genesis.com/realms/eugenesisidm/ga-api/redirect2&lang=de&state=ccsp",
+        "success_selector": "a[class='logout user']",
+        "user_agent": _MOBILE_UA,
+        "region_name": "Europe",
+        "brand_name": "Genesis",
+    },
 }
 
 # Legacy aliases
 BRAND_ALIASES = {
     "kia": "eu_kia",
     "hyundai": "eu_hyundai",
+    "genesis": "eu_genesis",
 }
 
 STYLE = """
@@ -509,6 +522,7 @@ def index():
         <select id="man-brand" style="padding:10px 14px;border:1px solid var(--border);border-radius:10px;font-size:14px;">
             <option value="eu_kia">Kia</option>
             <option value="eu_hyundai">Hyundai</option>
+            <option value="eu_genesis">Genesis</option>
         </select>
         <input type="text" id="man-user" placeholder="E-Mail / Username" required>
         <input type="password" id="man-pass" placeholder="Password" required>
@@ -564,7 +578,7 @@ function addVehicle() {{
         '<button onclick="this.parentElement.parentElement.remove()" style="background:none;border:none;color:var(--error);cursor:pointer;font-size:16px;">✕</button></div>' +
         '<div style="display:flex;flex-direction:column;gap:8px;">' +
         '<select class="v-brand" style="padding:10px 14px;border:1px solid var(--border);border-radius:10px;font-size:14px;">' +
-        '<option value="eu_kia">Kia</option><option value="eu_hyundai">Hyundai</option></select>' +
+        '<option value="eu_kia">Kia</option><option value="eu_hyundai">Hyundai</option><option value="eu_genesis">Genesis</option></select>' +
         '<input type="text" class="v-user" placeholder="E-Mail / Username" style="padding:10px 14px;border:1px solid var(--border);border-radius:10px;font-size:14px;">' +
         '<input type="password" class="v-pass" placeholder="Password" style="padding:10px 14px;border:1px solid var(--border);border-radius:10px;font-size:14px;">' +
         '</div>';

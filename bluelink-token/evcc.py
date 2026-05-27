@@ -89,7 +89,7 @@ def _auto_evcc_transfer(evcc_url, evcc_password, state, log_fn=None, force=False
             all_vehicles = []
         vehicles = [v for v in all_vehicles
                     if isinstance(v, dict) and any(t in str(v.get("config", v)).lower()
-                           for t in ("hyundai", "kia", "bluelink"))]
+                           for t in ("hyundai", "kia", "genesis", "bluelink"))]
         if not vehicles:
             _log("Auto-start: no Hyundai/Kia vehicles found in evcc", "warn")
             return
@@ -209,7 +209,7 @@ def evcc_get_vehicles(evcc_url, password):
         for v in vehicles:
             cfg = v.get("config", {})
             tmpl = cfg.get("template", "")
-            if tmpl in ("hyundai", "kia"):
+            if tmpl in ("hyundai", "kia", "genesis"):
                 result.append({
                     "id": v.get("id"),
                     "name": v.get("name", ""),

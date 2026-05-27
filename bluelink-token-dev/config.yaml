@@ -29,7 +29,7 @@ options:
   api_token: ""
 schema:
   vehicles:
-    - brand: list(eu_kia|eu_hyundai)
+    - brand: list(eu_kia|eu_hyundai|eu_genesis)
       username: str
       password: password
   country: str?
