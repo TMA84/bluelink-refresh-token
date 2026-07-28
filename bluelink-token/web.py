@@ -1154,7 +1154,7 @@ def _headless_login_eu(username, password, config):
         "redirect_uri": redirect_uri,
         "client_id": client_id,
         "client_secret": config["client_secret"],
-    })
+    }, impersonate="chrome131_android")
 
     if resp.status_code != 200:
         return {"ok": False, "error": f"Token exchange failed: HTTP {resp.status_code}: {resp.text[:200]}"}
