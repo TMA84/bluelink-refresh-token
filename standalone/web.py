@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Bluelink Token Generator - Headless Web Application"""
 
-import os, re, time, threading, json, base64
+import os, re, time, threading, json, base64, uuid
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from urllib.parse import urlparse, parse_qs
 import requests as req_lib
 from flask import Flask, request, jsonify, redirect as flask_redirect
@@ -47,6 +48,8 @@ state = {
     "brand_override": None,
     # Legacy single-vehicle compat
     "refresh_token": None, "access_token": None, "test_result": "",
+    # CCI/OneApp login (EU Kia/Hyundai) — needed to refresh via the Verify button
+    "_cci": None,
 }
 
 _MOBILE_UA = "Mozilla/5.0 (Linux; Android 4.1.1; Galaxy Nexus Build/JRO03C) AppleWebKit/535.19 (KHTML, like Gecko) Chrome/18.0.1025.166 Mobile Safari/535.19_CCS_APP_AOS"
@@ -116,6 +119,16 @@ BRAND_CONFIG = {
         "user_agent": _MOBILE_UA,
         "region_name": "Europe",
         "brand_name": "Kia",
+        # OneApp/CCI login — bypasses the IDPConnect WAF block on the legacy
+        # client_id above (server now classifies its authorize as "abusing").
+        "use_cci": True,
+        "oneapp_client_id": "01b36c86-79e8-486c-8009-15f2ad88d670",
+        "oneapp_redirect_uri": "https://oneapp.kia.com/redirect",
+        "cci_api_url": "https://cci-api-eu.kia.com",
+        "cci_package_id": "com.kia.oneapp.eu",
+        "cci_client_name": "kia",
+        "cci_client_os_version": "27",
+        "cci_notification_provider": "IOS_APPSTORE",
     },
     "eu_hyundai": {
         "client_id": "6d477c38-3ca4-4cf3-9557-2a1929a94654",
@@ -128,6 +141,16 @@ BRAND_CONFIG = {
         "user_agent": _MOBILE_UA,
         "region_name": "Europe",
         "brand_name": "Hyundai",
+        # OneApp/CCI login — bypasses the IDPConnect WAF block on the legacy
+        # client_id above (server now classifies its authorize as "abusing").
+        "use_cci": True,
+        "oneapp_client_id": "4f4953b5-02e1-4dbc-8599-87e983ee1be5",
+        "oneapp_redirect_uri": "https://oneapp.hyundai.com/redirect",
+        "cci_api_url": "https://cci-api-eu.hyundai.com",
+        "cci_package_id": "com.hyundai.oneapp.eu",
+        "cci_client_name": "hyundai",
+        "cci_client_os_version": "18.7",
+        "cci_notification_provider": "APNS",
     },
     "eu_genesis": {
         "client_id": "3020afa2-30ff-412a-aa51-d28fbe901e10",
@@ -915,23 +938,78 @@ def test_token():
     if not refresh_token:
         state["test_result"] = "No refresh token available."
         return flask_redirect("/")
+    cci = state.get("_cci")
     try:
-        data = {"grant_type": "refresh_token", "refresh_token": refresh_token,
-                "client_id": config["client_id"], "client_secret": config["client_secret"]}
-        response = curl_requests.post(config["token_url"], data=data, impersonate="chrome131_android")
-        if response.status_code == 200:
-            new_tokens = response.json()
-            if new_tokens.get("access_token"):
-                state["access_token"] = new_tokens["access_token"]
-                state["test_result"] = "ok"
-            else:
-                state["test_result"] = "No access token in response"
+        if cci and BRAND_CONFIG.get(cci.get("brand", "")) is config:
+            _test_refresh_cci(config, refresh_token, cci)
         else:
-            state["test_result"] = f"Token refresh failed ({response.status_code}): {response.text[:150]}"
+            data = {"grant_type": "refresh_token", "refresh_token": refresh_token,
+                    "client_id": config["client_id"], "client_secret": config["client_secret"]}
+            response = curl_requests.post(config["token_url"], data=data, impersonate="chrome131_android")
+            if response.status_code == 200:
+                new_tokens = response.json()
+                if new_tokens.get("access_token"):
+                    state["access_token"] = new_tokens["access_token"]
+                    state["test_result"] = "ok"
+                else:
+                    state["test_result"] = "No access token in response"
+            else:
+                state["test_result"] = f"Token refresh failed ({response.status_code}): {response.text[:150]}"
     except Exception as e:
         print(f"[ERROR] {e}", flush=True)
         state["test_result"] = "An internal error occurred."
     return flask_redirect("/")
+
+
+def _test_refresh_cci(config, refresh_token, cci):
+    """Refresh a CCI/OneApp-issued token set and re-exchange the CCS token."""
+    device_id = cci.get("device_id", "")
+    headers = _cci_headers(config, device_id, cci_access_token=cci.get("cci_access_token"),
+                            non_ccs_token=cci.get("non_ccs_token"),
+                            exchangeable_token=cci.get("exchangeable_token"),
+                            content_type="application/json")
+    body = {
+        "accessToken": (cci.get("cci_access_token") or "").removeprefix("Bearer "),
+        "refreshToken": refresh_token,
+        "exchangeableAccessToken": cci.get("exchangeable_token") or "",
+        "exchangeableRefreshToken": cci.get("exchangeable_refresh_token") or "",
+        "nonCcsToken": cci.get("non_ccs_token") or "",
+        "nonCcsRefreshToken": cci.get("non_ccs_refresh_token") or "",
+        "idToken": cci.get("id_token") or "",
+    }
+    resp = req_lib.post(f"{config['cci_api_url']}/domain/api/v2/auth/token-refresh",
+                         headers=headers, json=body, timeout=30)
+    if resp.status_code != 200:
+        state["test_result"] = f"CCI token refresh failed ({resp.status_code}): {resp.text[:150]}"
+        return
+    data = resp.json()
+    cci_access_token = data.get("accessToken", cci.get("cci_access_token", ""))
+    non_ccs_token = data.get("nonCcsToken", cci.get("non_ccs_token", ""))
+    exchangeable_token = data.get("exchangeableAccessToken", cci.get("exchangeable_token", ""))
+
+    ccs_resp = req_lib.post(f"{config['cci_api_url']}/domain/api/v1/auth/token-exchange",
+                             params={"serviceType": "CCS"},
+                             headers=_cci_headers(config, device_id, cci_access_token=cci_access_token,
+                                                   non_ccs_token=non_ccs_token,
+                                                   exchangeable_token=exchangeable_token),
+                             timeout=30)
+    if ccs_resp.status_code != 200:
+        state["test_result"] = f"CCS re-exchange failed ({ccs_resp.status_code}): {ccs_resp.text[:150]}"
+        return
+    ccs_data = ccs_resp.json()
+    ccs_token = ccs_data.get("accessToken") or ccs_data.get("ccsAccessToken") or ""
+    if not ccs_token:
+        state["test_result"] = "CCS re-exchange returned no accessToken"
+        return
+
+    state["access_token"] = "Bearer " + ccs_token
+    state["refresh_token"] = data.get("refreshToken", refresh_token)
+    state["_cci"] = {**cci, "cci_access_token": cci_access_token, "non_ccs_token": non_ccs_token,
+                      "exchangeable_token": exchangeable_token,
+                      "exchangeable_refresh_token": data.get("exchangeableRefreshToken", cci.get("exchangeable_refresh_token", "")),
+                      "non_ccs_refresh_token": data.get("nonCcsRefreshToken", cci.get("non_ccs_refresh_token", "")),
+                      "id_token": data.get("idToken", cci.get("id_token", ""))}
+    state["test_result"] = "ok"
 
 @app.route("/api/quicklogin", methods=["POST"])
 def api_quicklogin():
@@ -1046,6 +1124,49 @@ def _send_ha_notification(title, message):
         pass
 
 
+def _cci_timezone_offset():
+    """Current UTC offset of the EU data timezone as '+HH:MM'."""
+    off = datetime.now(timezone.utc).astimezone(ZoneInfo("Europe/Berlin")).strftime("%z")
+    return f"{off[:3]}:{off[3:]}" if off else "+00:00"
+
+
+def _cci_headers(config, device_id, cci_access_token=None, non_ccs_token=None,
+                  exchangeable_token=None, content_type=None):
+    """Headers for the CCI API (cci-api-eu.{hyundai,kia}.com).
+
+    - Authentication: raw nonCcsToken (no Bearer prefix)
+    - authorization: "Bearer " + CCI accessToken
+    - exchangeable-token / non-ccs-token (kebab-case)
+    """
+    headers = {
+        "client-id": config["cci_package_id"],
+        "client-name": config["cci_client_name"],
+        "client-version": "1.3.3",
+        "client-os-code": "ios",
+        "client-os-version": config["cci_client_os_version"],
+        "client-device-id": device_id or "",
+        "client-device-model": "iPhone",
+        "client-notification-provider-type": config["cci_notification_provider"],
+        "locale": "DE",
+        "timezone": _cci_timezone_offset(),
+        "Accept": "application/json",
+        "Accept-Language": "de",
+        "User-Agent": config["user_agent"],
+    }
+    if non_ccs_token is not None:
+        headers["Authentication"] = non_ccs_token
+    if cci_access_token is not None:
+        headers["authorization"] = f"Bearer {cci_access_token.removeprefix('Bearer ').strip()}"
+    if exchangeable_token is not None:
+        headers["exchangeable-token"] = exchangeable_token
+        headers["non-ccs-token"] = non_ccs_token or ""
+    if content_type:
+        headers["Content-Type"] = content_type
+    else:
+        headers["Content-Length"] = "0"
+    return headers
+
+
 def _headless_login_eu(username, password, config):
     """
     Headless EU Kia/Hyundai login using curl_cffi (Android TLS fingerprint).
@@ -1056,13 +1177,18 @@ def _headless_login_eu(username, password, config):
       2. GET /auth/api/v1/accounts/certs (RSA public key)
       3. POST /auth/account/signin with encrypted password + app client_id
          → 302 redirect with code directly
-      4. POST token exchange → refresh + access token
+      4a. Legacy (Genesis): POST token exchange → refresh + access token
+      4b. CCI (Kia/Hyundai): the legacy client_id's authorize is WAF-blocked
+          ("classified as an abusing request"), so login instead goes through
+          the OneApp client_id, then the resulting CCI token is exchanged for
+          a CCS token that the legacy ccapi:8080 endpoints still accept.
     """
     # Derive host from token_url
     from urllib.parse import urlparse as _urlparse
     host = f"{_urlparse(config['token_url']).scheme}://{_urlparse(config['token_url']).netloc}"
-    client_id = config["client_id"]
-    redirect_uri = config["redirect_url_final"]
+    use_cci = config.get("use_cci", False)
+    client_id = config["oneapp_client_id"] if use_cci else config["client_id"]
+    redirect_uri = config["oneapp_redirect_uri"] if use_cci else config["redirect_url_final"]
 
     log("Headless login: starting (curl_cffi, Android TLS fingerprint)...", "ok")
 
@@ -1076,6 +1202,9 @@ def _headless_login_eu(username, password, config):
                 f"&redirect_uri={redirect_uri}&lang=de&state=ccsp&country=de")
     resp = s.get(auth_url, allow_redirects=True)
     log(f"Headless: authorize page loaded (HTTP {resp.status_code}, cookies: {list(s.cookies.keys())})")
+    if "abusing" in resp.text.lower() or "/error?status=400" in str(resp.url):
+        return {"ok": False, "error": "Authorize request was blocked by Kia/Hyundai's WAF "
+                "('abusing request'). This is a server-side block, not a credentials problem."}
 
     # Step 2: Get RSA public key for password encryption
     log("Headless: fetching RSA public key...")
@@ -1146,22 +1275,66 @@ def _headless_login_eu(username, password, config):
     code = code_list[0]
     log(f"Headless: authorization code received.", "ok")
 
-    # Step 4: Token exchange
-    log("Headless: exchanging code for tokens...")
-    resp = curl_requests.post(config["token_url"], data={
-        "grant_type": "authorization_code",
-        "code": code,
-        "redirect_uri": redirect_uri,
-        "client_id": client_id,
-        "client_secret": config["client_secret"],
-    }, impersonate="chrome131_android")
+    if use_cci:
+        # Step 4: exchange auth code for CCI tokens
+        device_id = str(uuid.uuid4())
+        log("Headless: exchanging code for CCI tokens...")
+        resp = req_lib.post(f"{config['cci_api_url']}/domain/api/v1/auth/token",
+                             params={"code": code},
+                             headers=_cci_headers(config, device_id), timeout=30)
+        if resp.status_code != 200:
+            return {"ok": False, "error": f"CCI token exchange failed: HTTP {resp.status_code}: {resp.text[:200]}"}
+        cci = resp.json()
+        cci_access_token = cci.get("accessToken", "")
+        refresh_token = cci.get("refreshToken", "N/A")
+        non_ccs_token = cci.get("nonCcsToken", "")
+        exchangeable_token = cci.get("exchangeableAccessToken", "")
+        exchangeable_refresh_token = cci.get("exchangeableRefreshToken", "")
+        non_ccs_refresh_token = cci.get("nonCcsRefreshToken", "")
+        id_token = cci.get("idToken", "")
 
-    if resp.status_code != 200:
-        return {"ok": False, "error": f"Token exchange failed: HTTP {resp.status_code}: {resp.text[:200]}"}
+        # Step 5: exchange the CCI token for a CCS token (accepted by ccapi:8080)
+        log("Headless: exchanging CCI token for CCS token...")
+        resp = req_lib.post(f"{config['cci_api_url']}/domain/api/v1/auth/token-exchange",
+                             params={"serviceType": "CCS"},
+                             headers=_cci_headers(config, device_id, cci_access_token=cci_access_token,
+                                                   non_ccs_token=non_ccs_token,
+                                                   exchangeable_token=exchangeable_token),
+                             timeout=30)
+        if resp.status_code != 200:
+            return {"ok": False, "error": f"CCS token exchange failed: HTTP {resp.status_code}: {resp.text[:200]}"}
+        ccs_data = resp.json()
+        ccs_token = ccs_data.get("accessToken") or ccs_data.get("ccsAccessToken") or ""
+        if not ccs_token:
+            return {"ok": False, "error": f"CCS token exchange returned no accessToken: {resp.text[:200]}"}
 
-    tokens = resp.json()
-    state["refresh_token"] = tokens.get("refresh_token", "N/A")
-    state["access_token"] = tokens.get("access_token", "N/A")
+        access_token = "Bearer " + ccs_token
+        state["_cci"] = {"device_id": device_id, "cci_access_token": cci_access_token,
+                          "non_ccs_token": non_ccs_token, "exchangeable_token": exchangeable_token,
+                          "exchangeable_refresh_token": exchangeable_refresh_token,
+                          "non_ccs_refresh_token": non_ccs_refresh_token, "id_token": id_token,
+                          "brand": next((k for k, v in BRAND_CONFIG.items() if v is config), "")}
+    else:
+        # Step 4: Token exchange
+        log("Headless: exchanging code for tokens...")
+        resp = curl_requests.post(config["token_url"], data={
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": redirect_uri,
+            "client_id": client_id,
+            "client_secret": config["client_secret"],
+        }, impersonate="chrome131_android")
+
+        if resp.status_code != 200:
+            return {"ok": False, "error": f"Token exchange failed: HTTP {resp.status_code}: {resp.text[:200]}"}
+
+        tokens = resp.json()
+        access_token = tokens.get("access_token", "N/A")
+        refresh_token = tokens.get("refresh_token", "N/A")
+        state["_cci"] = None
+
+    state["refresh_token"] = refresh_token
+    state["access_token"] = access_token
     state["status"] = "success"
     log("Token generated successfully via headless login!", "ok")
     _schedule_auto_reset()
@@ -1610,6 +1783,9 @@ def _auto_start_login(force=False):
         # Auto-transfer to evcc
         evcc_url = os.environ.get("EVCC_URL", "").rstrip("/")
         evcc_password = os.environ.get("EVCC_PASSWORD", "")
+        if evcc_url and any(BRAND_CONFIG.get(v.get("brand"), {}).get("use_cci") for v in generated):
+            log("Note: evcc does not yet support the new Kia/Hyundai EU token format "
+                "(OneApp/CCI login) — the transfer below may fail until evcc adds support.", "warn")
         if evcc_url:
             state["_evcc_transferring"] = True
             _auto_evcc_transfer(evcc_url, evcc_password)
@@ -1619,6 +1795,9 @@ def _auto_start_login(force=False):
 
         # Auto-transfer to kia_uvo (independent of evcc)
         if _kia_uvo_transfer_enabled():
+            if any(BRAND_CONFIG.get(v.get("brand"), {}).get("use_cci") for v in generated):
+                log("Note: the kia_uvo integration does not yet support the new Kia/Hyundai EU "
+                    "token format (OneApp/CCI login) — the transfer below may fail until it adds support.", "warn")
             state["_kia_uvo_transferring"] = True
             try:
                 # Build vehicle list with refresh tokens as passwords for kia_uvo

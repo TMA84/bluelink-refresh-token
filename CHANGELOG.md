@@ -1,5 +1,14 @@
 # Changelog
 
+## 6.9.0
+
+### Fix
+- **Kia/Hyundai EU Login wieder repariert** — Kias/Hyundais WAF blockiert seit 11.08. die alte Login-Client-ID komplett ("classified as an abusing request and blocked"). Login läuft jetzt über den neuen OneApp/CCI-Flow (gleicher Ansatz wie [hyundai_kia_connect_api#1277](https://github.com/Hyundai-Kia-Connect/hyundai_kia_connect_api/pull/1277)), der resultierende Token bleibt mit den bestehenden `ccapi:8080`-Endpunkten kompatibel.
+- Genesis EU ist von der Sperre nicht betroffen und nutzt weiterhin den bisherigen Login-Flow.
+
+### Bekannte Einschränkung
+- **Auto-Transfer zu evcc/kia_uvo funktioniert für Kia/Hyundai EU aktuell nicht.** Der neue Token hat ein anderes Format (mehrere zusammengehörige CCI-Werte statt eines einzelnen 48-Zeichen-Refresh-Tokens) und lässt sich nicht mehr über den bisherigen "Refresh-Token als Passwort" Trick an evcc/kia_uvo übergeben. Das Generieren des Tokens in diesem Tool selbst (inkl. Verify) funktioniert einwandfrei — bis evcc bzw. die kia_uvo-Integration das neue Format unterstützen, muss der Token für diese beiden Ziele vorerst manuell/anders eingerichtet werden.
+
 ## 6.6.0
 
 ### Neu
