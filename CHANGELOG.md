@@ -1,5 +1,11 @@
 # Changelog
 
+## 6.9.1
+
+### Fix
+- **Genesis EU war entgegen der ursprünglichen Annahme doch vom WAF-Block betroffen** (die Sperre greift am `client_id`, nicht am Port) — nutzt jetzt ebenfalls den OneApp/CCI-Login-Flow, analog zu [hyundai_kia_connect_api#1278](https://github.com/Hyundai-Kia-Connect/hyundai_kia_connect_api/pull/1278).
+- **"No time zone found with key Europe/Berlin" unter Windows behoben** (#34) — der CCI-Header-Code nutzte `zoneinfo.ZoneInfo("Europe/Berlin")`, was ohne die (unter Windows nicht vorinstallierte) IANA-Zeitzonendatenbank crasht. Nutzt jetzt den lokalen System-Offset ohne externe Abhängigkeit.
+
 ## 6.9.0
 
 ### Fix

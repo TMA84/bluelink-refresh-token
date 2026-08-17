@@ -3,7 +3,6 @@
 
 import os, re, time, threading, json, base64, uuid
 from datetime import datetime, timedelta, timezone
-from zoneinfo import ZoneInfo
 from urllib.parse import urlparse, parse_qs
 import requests as req_lib
 from flask import Flask, request, jsonify, redirect as flask_redirect
@@ -163,6 +162,17 @@ BRAND_CONFIG = {
         "user_agent": _MOBILE_UA,
         "region_name": "Europe",
         "brand_name": "Genesis",
+        # OneApp/CCI login — Genesis EU turned out to be WAF-blocked the same
+        # way as Kia/Hyundai (blocked by client_id, not by port), see
+        # hyundai_kia_connect_api#1278.
+        "use_cci": True,
+        "oneapp_client_id": "50e3b8b0-ced5-43b7-8a42-f86ac92fe50e",
+        "oneapp_redirect_uri": "https://oneapp.genesis.com/redirect",
+        "cci_api_url": "https://cci-api-eu.genesis.com",
+        "cci_package_id": "com.genesis.oneapp.eu",
+        "cci_client_name": "genesis",
+        "cci_client_os_version": "18.7",
+        "cci_notification_provider": "APNS",
     },
 }
 
@@ -1125,8 +1135,15 @@ def _send_ha_notification(title, message):
 
 
 def _cci_timezone_offset():
-    """Current UTC offset of the EU data timezone as '+HH:MM'."""
-    off = datetime.now(timezone.utc).astimezone(ZoneInfo("Europe/Berlin")).strftime("%z")
+    """Current UTC offset of the local system timezone as '+HH:MM'.
+
+    Avoids zoneinfo.ZoneInfo("Europe/Berlin") — Windows has no bundled IANA
+    tzdata, so that raised ZoneInfoNotFoundError for every Windows user (#34).
+    This header value isn't strictly validated by Kia/Hyundai, so the host's
+    own local offset (already EU in practice, since this runs for EU accounts)
+    is a portable, dependency-free stand-in.
+    """
+    off = datetime.now().astimezone().strftime("%z")
     return f"{off[:3]}:{off[3:]}" if off else "+00:00"
 
 
