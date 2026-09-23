@@ -1276,6 +1276,10 @@ def _headless_login_eu(username, password, config):
 
     log(f"Headless: signin response HTTP {resp.status_code}")
     if resp.status_code != 302:
+        if resp.status_code == 403 and "<title>403 Forbidden</title>" in resp.text:
+            return {"ok": False, "error": "Signin blocked with a raw 403 Forbidden (not a Kia/Hyundai "
+                    "error page) — this looks like a network/IP-level block (e.g. hosting provider or "
+                    "VPN exit flagged), not a credentials problem. Try from a different network."}
         return {"ok": False, "error": f"Signin returned HTTP {resp.status_code} (expected 302). Response: {resp.text[:300]}"}
 
     location = resp.headers.get("location", "")

@@ -1,5 +1,11 @@
 # Changelog
 
+## 6.9.2
+
+### Verbessert
+- **Klarere Fehlermeldung bei rohem "403 Forbidden" beim Signin** (#36) — statt der generischen Meldung wird jetzt erkannt, wenn Kia/Hyundai mit einer nackten Apache-403-Seite (kein JSON, keine "abusing request"-Meldung) antworten, und als wahrscheinlicher Netzwerk-/IP-Block (z.B. Hosting-Provider oder VPN-Ausgang) statt als Zugangsdaten-Problem gekennzeichnet.
+- Live gegen echte Kia- und Hyundai-EU-Accounts erneut verifiziert — der OneApp/CCI-Login-Flow selbst funktioniert weiterhin einwandfrei; die in #36 gemeldeten Fehler (roher 403, unerwarteter Redirect) konnten nicht reproduziert werden und scheinen netzwerk-/account-spezifisch zu sein.
+
 ## 6.9.1
 
 ### Fix
