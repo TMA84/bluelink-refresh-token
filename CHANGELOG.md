@@ -1,5 +1,14 @@
 # Changelog
 
+## 6.9.3 — Project deprecated
+
+This project is no longer maintained. Kia/Hyundai's escalating anti-automation measures (WAF block in August, signed-request requirement since October 2026) are now handled natively by the two projects this tool fed:
+
+- **evcc**: enter your account username/password directly in the vehicle config (Europe region) — originally enabled by this project's OneApp/CCI contribution, now also covers the newer signed-request requirement.
+- **Home Assistant `kia_uvo`**: reconfigure with username/password/PIN directly — no external tool needed.
+
+Also includes a minor fix made before the decision to deprecate: the CCI `device_id` is now stable per account instead of randomly regenerated on every login (more correct, though it did not resolve the October anti-automation block on its own).
+
 ## 6.9.2
 
 ### Verbessert

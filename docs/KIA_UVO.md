@@ -1,5 +1,7 @@
 # kia_uvo Integration
 
+> **⚠️ Deprecated:** This whole project is no longer maintained (see [README](../README.md)). Reconfigure the `kia_uvo` integration directly with your normal username, password, and PIN — no external token or tool is needed anymore.
+
 Transfer generated refresh tokens directly to the [Kia/Hyundai Connect integration](https://github.com/Hyundai-Kia-Connect/kia_uvo) (kia_uvo) in Home Assistant — fully automatic, no manual token copying needed.
 
 This works both as a **Home Assistant Add-on** and as a **standalone Docker container** (with additional configuration).

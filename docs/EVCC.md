@@ -1,5 +1,7 @@
 # evcc Integration
 
+> **⚠️ Deprecated:** This whole project is no longer maintained (see [README](../README.md)). evcc now handles Kia/Hyundai/Genesis login natively — just enter your account username and password directly in evcc's vehicle configuration instead of using this tool.
+
 Automatically transfer generated Bluelink refresh tokens to [evcc](https://evcc.io) after generation — no manual token copying needed.
 
 This works with evcc running as a Home Assistant add-on, Docker container, or native installation.

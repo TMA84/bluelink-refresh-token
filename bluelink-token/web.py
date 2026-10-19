@@ -1298,7 +1298,11 @@ def _headless_login_eu(username, password, config):
 
     if use_cci:
         # Step 4: exchange auth code for CCI tokens
-        device_id = str(uuid.uuid4())
+        # Stable per (brand, username) rather than random — Kia/Hyundai's backend
+        # treats a constantly-changing device_id as "unusual activity" and force-
+        # logs-out the session (HTTP 400, code 9035), since a real device/app
+        # install keeps the same device_id across logins.
+        device_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"bluelink-token:{config['brand_name']}:{username}"))
         log("Headless: exchanging code for CCI tokens...")
         resp = req_lib.post(f"{config['cci_api_url']}/domain/api/v1/auth/token",
                              params={"code": code},

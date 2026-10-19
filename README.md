@@ -24,6 +24,17 @@
 
 ---
 
+## ⚠️ Deprecated — use evcc or kia_uvo directly instead
+
+**This project is no longer maintained.** Since October 2026, Kia/Hyundai have tightened anti-automation checks on their login flow (first a WAF block on the legacy client_id in August, now a signed-request requirement as of mid-October). Both of the projects this tool was built to feed now handle that themselves, directly and natively, without needing an external token generator:
+
+- **evcc**: enter your Kia/Hyundai/Genesis account's **username and password directly** in the vehicle configuration (Europe region). evcc's own login (originally contributed by this project, now including the newer signed-request handling) takes care of the rest. See the [evcc vehicle docs](https://docs.evcc.io/en/vehicles/).
+- **Home Assistant (`kia_uvo` integration)**: reconfigure with your **normal username, password, and PIN** — no external tool or token needed. See the [kia_uvo repository](https://github.com/Hyundai-Kia-Connect/kia_uvo).
+
+A standalone external tool like this one will always lag behind Kia/Hyundai's changes, since it has to independently reverse-engineer each new anti-abuse measure rather than being part of an actively maintained project with a large contributor base. The rest of this README is kept for historical reference.
+
+---
+
 ## About
 
 Generates Bluelink refresh tokens for EU Kia and EU Hyundai vehicles. Fully **headless** — no browser, no CAPTCHA, no manual interaction. Configure your credentials and the token is generated automatically.
